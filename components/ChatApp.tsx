@@ -1,0 +1,669 @@
+"use client";
+/**
+ * ChatApp — top-level client container. Owns identity, chat list, the active
+ * thread and the SSE streaming loop against /api/chat.
+ *
+ * Upgrades:
+ *  - Aurora + grain background (same as landing page)
+ *  - Animated welcome screen with greeting and format hints
+ *  - Keyboard shortcuts: Ctrl+K = new chat, Esc = stop generation
+ *  - Dynamic browser tab title (shows active chat name)
+ *  - Pin/unpin chats (stored in localStorage)
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sidebar } from "./Sidebar";
+import { Composer } from "./Composer";
+import { NameModal } from "./NameModal";
+import { useTheme } from "./ThemeProvider";
+import { exportChat } from "@/lib/exportChat";
+import type { ChatSummary, EffortLevel, UiMessage } from "@/lib/types";
+import {
+  IconMenu, IconSun, IconMoon, IconSpark, IconDownload, IconPlus, IconHome,
+} from "./Icons";
+
+// Markdown parsing and code highlighting are only needed once a reply is visible.
+// Keeping them out of the first chat-page bundle makes the initial transition faster.
+const MessageBubble = dynamic(
+  () => import("./MessageBubble").then((module) => module.MessageBubble),
+  { ssr: false }
+);
+
+const LS_USER   = "tp_user";
+const LS_EFFORT = "tp_effort";
+const LS_PINS   = "tp_pins";
+
+const SUGGESTIONS = [
+  { title: "Explain a concept",   body: "Explain how HTTPS works, like I'm a junior developer." },
+  { title: "Write some code",     body: "Write a TypeScript debounce hook with tests." },
+  { title: "Plan something",      body: "Plan a 5-day trip to Hyderabad on a mid-range budget." },
+  { title: "Compare options",     body: "What should I consider when choosing SQLite or PostgreSQL for a small SaaS?" },
+  { title: "Solve a problem",     body: "Help me debug why my React useEffect runs twice in development." },
+  { title: "Learn something new", body: "Explain the difference between TCP and UDP with a real-world analogy." },
+];
+
+export default function ChatApp() {
+  const { theme, toggle } = useTheme();
+
+  const [user,         setUser]         = useState<{ id: string; name: string } | null>(null);
+  const [ready,        setReady]        = useState(false);
+  const [chats,        setChats]        = useState<ChatSummary[]>([]);
+  const [chatsLoading, setChatsLoading] = useState(true);
+  const [activeId,     setActiveId]     = useState<string | null>(null);
+  const [messages,     setMessages]     = useState<UiMessage[]>([]);
+  const [threadLoading,setThreadLoading]= useState(false);
+  const [streaming,    setStreaming]    = useState(false);
+  const [effort,       setEffort]       = useState<EffortLevel>("fast");
+  const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  const [query,        setQuery]        = useState("");
+  const [pinnedIds,    setPinnedIds]    = useState<Set<string>>(new Set());
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
+  const abortRef     = useRef<AbortController | null>(null);
+  const scrollRef    = useRef<HTMLDivElement>(null);
+  const exportMenuRef= useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const chatCacheRef = useRef(new Map<string, UiMessage[]>());
+  const threadRequestRef = useRef(0);
+
+  /* ── dynamic tab title ── */
+  const activeTitle = useMemo(
+    () => chats.find((c) => c.id === activeId)?.title ?? "New chat",
+    [chats, activeId]
+  );
+  useEffect(() => {
+    document.title = activeId
+      ? `${activeTitle} — Teja Priyan AI`
+      : "Teja Priyan AI — Intelligence, without the friction";
+  }, [activeTitle, activeId]);
+
+  /* ── bootstrap ── */
+  // Identity lives in a signed httpOnly session cookie; localStorage is only
+  // a cache for the display name. On boot we restore from the session, and if
+  // the cookie is gone but we still have a stored id, we silently re-register
+  // so returning users never lose their chats.
+  useEffect(() => {
+    let stored: { id: string; name: string } | null = null;
+    try {
+      const raw = localStorage.getItem(LS_USER);
+      if (raw) stored = JSON.parse(raw);
+      const e = localStorage.getItem(LS_EFFORT) as EffortLevel | null;
+      if (e) setEffort(e);
+      const pins = localStorage.getItem(LS_PINS);
+      if (pins) setPinnedIds(new Set(JSON.parse(pins)));
+    } catch {}
+    setSidebarOpen(window.innerWidth >= 1024);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/user");
+        if (res.ok) {
+          const u = await res.json();
+          if (u?.id) {
+            setUser(u);
+            try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch {}
+            setReady(true);
+            return;
+          }
+        }
+        // No live session — silently re-establish one for a returning visitor.
+        if (stored) {
+          const r = await fetch("/api/user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: stored.name, userId: stored.id }),
+          });
+          if (r.ok) {
+            const u = await r.json();
+            if (u?.id) {
+              setUser(u);
+              try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch {}
+            }
+          }
+        }
+      } catch {}
+      setReady(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_EFFORT, effort); } catch {}
+  }, [effort]);
+
+  // Recently opened conversations switch instantly instead of waiting for a second fetch.
+  useEffect(() => {
+    if (activeId) chatCacheRef.current.set(activeId, messages);
+    setExportMenuOpen(false);
+  }, [activeId, messages]);
+
+  // Click outside to close export menu
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, [exportMenuOpen]);
+
+  /* ── pin helpers ── */
+  const pinChat = useCallback((id: string, pinned: boolean) => {
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      pinned ? next.add(id) : next.delete(id);
+      try { localStorage.setItem(LS_PINS, JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
+
+  /* ── keyboard shortcuts ── */
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + K → new chat
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        newChat();
+      }
+      // Esc → stop generation
+      if (e.key === "Escape" && streaming) {
+        abortRef.current?.abort();
+        setStreaming(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [streaming]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── identity ── */
+  const registerName = useCallback(async (name: string) => {
+    // If an older account id is cached, pass it along so the server can
+    // re-attach the session to the same account (history is preserved).
+    let legacyId: string | undefined;
+    try {
+      const raw = localStorage.getItem(LS_USER);
+      if (raw) legacyId = JSON.parse(raw).id;
+    } catch {}
+    const res = await fetch("/api/user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, userId: legacyId }),
+    });
+    const u = await res.json();
+    setUser(u);
+    try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch {}
+  }, []);
+
+  /* ── chat list ── */
+  const loadChats = useCallback(
+    async (q = "") => {
+      if (!user) return;
+      const url = `/api/chats${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      setChats(data.chats ?? []);
+      setChatsLoading(false);
+    },
+    [user]
+  );
+
+  useEffect(() => { if (user) loadChats(); }, [user, loadChats]);
+
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => loadChats(query), 220);
+    return () => clearTimeout(t);
+  }, [query, user, loadChats]);
+
+  /* ── thread ── */
+  const openChat = useCallback(async (id: string) => {
+    if (!user) return;
+    const requestId = ++threadRequestRef.current;
+    const cached = chatCacheRef.current.get(id);
+    setActiveId(id);
+    setMessages(cached ?? []);
+    setThreadLoading(!cached);
+    if (window.innerWidth < 1024) setSidebarOpen(false);
+    try {
+      const res = await fetch(`/api/chats/${id}`);
+      const data = await res.json();
+      if (requestId !== threadRequestRef.current) return;
+      const nextMessages = (data.chat?.messages ?? []).map((m: any) => ({
+        id: m.id, role: m.role, content: m.content, imageData: m.imageData,
+      }));
+      chatCacheRef.current.set(id, nextMessages);
+      setMessages(nextMessages);
+    } finally {
+      if (requestId === threadRequestRef.current) setThreadLoading(false);
+    }
+  }, [user]);
+
+  const newChat = useCallback(() => {
+    abortRef.current?.abort();
+    setActiveId(null);
+    setMessages([]);
+    if (window.innerWidth < 1024) setSidebarOpen(false);
+  }, []);
+
+  const renameChat = useCallback(async (id: string, title: string) => {
+    if (!user) return;
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, title } : c)));
+    await fetch(`/api/chats/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+  }, [user]);
+
+  const deleteChat = useCallback(
+    async (id: string) => {
+      if (!user) return;
+      setChats((cs) => cs.filter((c) => c.id !== id));
+      chatCacheRef.current.delete(id);
+      pinChat(id, false);
+      if (id === activeId) { setActiveId(null); setMessages([]); }
+      await fetch(`/api/chats/${id}`, { method: "DELETE" });
+    },
+    [activeId, pinChat, user]
+  );
+
+  /* ── autoscroll ── */
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  };
+
+  useEffect(() => {
+    if (stickToBottom.current) {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    }
+  }, [messages]);
+
+  /* ── streaming ── */
+  const runStream = useCallback(
+    async (payload: Record<string, unknown>) => {
+      if (!user) return;
+      const controller  = new AbortController();
+      abortRef.current  = controller;
+      setStreaming(true);
+      stickToBottom.current = true;
+
+      const assistantId = `a-${Date.now()}`;
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "" }]);
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ effort, ...payload }),
+          signal: controller.signal,
+        });
+        // Session expired (30-day cookie): ask for the name again — the same
+        // account is re-attached, so no history is lost.
+        if (res.status === 401) {
+          setUser(null);
+          throw new Error("Session expired — please tell me your name again.");
+        }
+        if (!res.body) throw new Error("No stream");
+
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let createdChatId: string | null = null;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const frames = buf.split("\n\n");
+          buf = frames.pop() ?? "";
+
+          for (const frame of frames) {
+            const evLine   = frame.split("\n").find((l) => l.startsWith("event:"));
+            const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
+            if (!dataLine) continue;
+            const event = evLine?.slice(6).trim() ?? "message";
+            let data: any;
+            try { data = JSON.parse(dataLine.slice(5).trim()); } catch { continue; }
+
+            if (event === "meta" && data.chatId) {
+              createdChatId = data.chatId;
+              setActiveId((cur) => cur ?? data.chatId);
+            } else if (event === "token") {
+              setMessages((m) =>
+                m.map((x) => (x.id === assistantId ? { ...x, content: x.content + data.text } : x))
+              );
+            } else if (event === "title") {
+              setChats((cs) =>
+                cs.some((c) => c.id === data.chatId)
+                  ? cs.map((c) => (c.id === data.chatId ? { ...c, title: data.title } : c))
+                  : cs
+              );
+            } else if (event === "error") {
+              setMessages((m) =>
+                m.map((x) =>
+                  x.id === assistantId
+                    ? { ...x, content: x.content || data.message, error: true }
+                    : x
+                )
+              );
+            }
+          }
+        }
+        if (createdChatId) loadChats(query);
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          const friendly =
+            typeof err?.message === "string" && err.message.startsWith("Session expired")
+              ? err.message
+              : "Something went wrong while reaching my services. Please try again in a moment.";
+          setMessages((m) =>
+            m.map((x) =>
+              x.id === assistantId && !x.content
+                ? { ...x, error: true, content: friendly }
+                : x
+            )
+          );
+        }
+      } finally {
+        setStreaming(false);
+        abortRef.current = null;
+      }
+    },
+    [user, effort, loadChats, query]
+  );
+
+  const send = useCallback(
+    (text: string, image: string | null) => {
+      setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", content: text, imageData: image }]);
+      runStream({ chatId: activeId, message: text, image });
+    },
+    [activeId, runStream]
+  );
+
+  const regenerate = useCallback(() => {
+    setMessages((m) => (m[m.length - 1]?.role === "assistant" ? m.slice(0, -1) : m));
+    runStream({ chatId: activeId, regenerate: true });
+  }, [activeId, runStream]);
+
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+    setStreaming(false);
+  }, []);
+
+  /* ── render ── */
+  if (!ready) return <BootScreen />;
+
+  return (
+    <div className="flex h-[100dvh] overflow-hidden">
+      <NameModal open={!user} onSubmit={registerName} />
+
+      <Sidebar
+        chats={chats}
+        activeId={activeId}
+        loading={chatsLoading}
+        open={sidebarOpen}
+        userName={user?.name ?? ""}
+        query={query}
+        onQuery={setQuery}
+        onClose={() => setSidebarOpen(false)}
+        onNew={newChat}
+        onSelect={openChat}
+        onRename={renameChat}
+        onDelete={deleteChat}
+        onPin={pinChat}
+        pinnedIds={pinnedIds}
+      />
+
+      <main className="chat-surface relative flex min-w-0 flex-1 flex-col">
+        {/* ── Aurora background (same as landing) ── */}
+        <div className="aurora pointer-events-none absolute inset-0 z-0" />
+        <div className="grain pointer-events-none absolute inset-0 z-0" />
+
+        {/* ── Header ── */}
+        <header className="relative z-10 flex items-center gap-2 border-b border-sand-200/80 bg-sand-50/70 px-3 py-2.5 backdrop-blur-xl dark:border-sand-800/80 dark:bg-sand-950/70 sm:px-4">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label="Toggle sidebar"
+            title="Toggle sidebar"
+            className="rounded-lg p-2 text-sand-500 transition hover:bg-sand-100/80 dark:hover:bg-sand-800"
+          >
+            <IconMenu className="h-5 w-5" />
+          </motion.button>
+
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-sm font-medium">{activeTitle}</h2>
+            {user && <p className="truncate text-[11px] text-sand-400">Hi, {user.name} 👋</p>}
+          </div>
+
+          {/* Keyboard shortcut hint */}
+          <span className="hidden rounded-md border border-sand-200 bg-sand-100/80 px-2 py-0.5 font-mono text-[10px] text-sand-400 dark:border-sand-700 dark:bg-sand-800/80 sm:inline">
+            ⌘K new
+          </span>
+
+          <Link
+            href="/"
+            aria-label="Back to site"
+            title="Back to site"
+            className="rounded-lg p-2 text-sand-500 transition hover:bg-sand-100/80 hover:text-ink dark:hover:bg-sand-800 dark:hover:text-sand-100"
+          >
+            <IconHome className="h-5 w-5" />
+          </Link>
+
+          <div ref={exportMenuRef} className="relative">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setExportMenuOpen((v) => !v)}
+              disabled={messages.length === 0}
+              aria-label="Export chat"
+              title="Export chat"
+              className="rounded-lg p-2 text-sand-500 transition hover:bg-sand-100/80 disabled:opacity-40 dark:hover:bg-sand-800"
+            >
+              <IconDownload className="h-5 w-5" />
+            </motion.button>
+
+            <AnimatePresence>
+              {exportMenuOpen && messages.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-sand-200 bg-white p-1 shadow-lg dark:border-sand-800 dark:bg-sand-900"
+                >
+                  <button
+                    onClick={() => {
+                      exportChat(activeTitle, messages, "md");
+                      setExportMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-sand-700 transition hover:bg-sand-100 dark:text-sand-300 dark:hover:bg-sand-800 text-left"
+                  >
+                    <span>Markdown</span>
+                    <span className="ml-auto rounded bg-sand-100 px-1.5 py-0.5 font-mono text-[10px] text-sand-500 dark:bg-sand-800 dark:text-sand-400">
+                      .md
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportChat(activeTitle, messages, "txt");
+                      setExportMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-sand-700 transition hover:bg-sand-100 dark:text-sand-300 dark:hover:bg-sand-800 text-left"
+                  >
+                    <span>Plain Text</span>
+                    <span className="ml-auto rounded bg-sand-100 px-1.5 py-0.5 font-mono text-[10px] text-sand-500 dark:bg-sand-800 dark:text-sand-400">
+                      .txt
+                    </span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }} whileHover={{ rotate: 12 }}
+            onClick={toggle}
+            aria-label="Toggle theme"
+            className="rounded-lg p-2 text-sand-500 transition hover:bg-sand-100/80 dark:hover:bg-sand-800"
+          >
+            {theme === "dark" ? <IconSun className="h-5 w-5" /> : <IconMoon className="h-5 w-5" />}
+          </motion.button>
+        </header>
+
+        {/* ── Thread ── */}
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          className="scroll-thin relative z-10 flex-1 overflow-y-auto"
+        >
+          <div className="relative mx-auto w-full max-w-4xl space-y-6 px-3 py-6 sm:px-5">
+            {threadLoading ? (
+              <ThreadSkeleton />
+            ) : messages.length === 0 ? (
+              <EmptyState name={user?.name ?? ""} onPick={(t) => send(t, null)} />
+            ) : (
+              <AnimatePresence initial={false}>
+                {messages.map((m, i) => (
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    userName={user?.name ?? ""}
+                    isLast={i === messages.length - 1}
+                    streaming={streaming}
+                    onRegenerate={m.role === "assistant" && !streaming ? regenerate : undefined}
+                  />
+                ))}
+              </AnimatePresence>
+            )}
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <Composer
+            onSend={send}
+            onStop={stop}
+            streaming={streaming}
+            effort={effort}
+            onEffort={setEffort}
+            disabled={!user}
+          />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ── sub-views ── */
+
+function BootScreen() {
+  return (
+    <div className="flex h-[100dvh] items-center justify-center">
+      <div className="aurora pointer-events-none absolute inset-0" />
+      <motion.div
+        animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30"
+      >
+        <IconSpark className="h-6 w-6" />
+      </motion.div>
+    </div>
+  );
+}
+
+function ThreadSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className={`flex ${i % 2 ? "justify-end" : "justify-start"}`}>
+          <div className="w-[70%] space-y-2">
+            <div className="skeleton h-4 w-1/3" />
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-4/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ name, onPick }: { name: string; onPick: (t: string) => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col items-center justify-center py-8 text-center sm:py-14"
+    >
+      {/* Animated logo */}
+      <motion.div
+        animate={{ y: [0, -7, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="relative"
+      >
+        <div className="absolute inset-0 rounded-2xl bg-orange-500/25 blur-xl" />
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-xl shadow-orange-500/30">
+          <IconSpark className="h-8 w-8" />
+        </div>
+      </motion.div>
+
+      <motion.h1
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="display mt-6 text-[2.6rem] font-normal leading-[1.05] text-sand-950 dark:text-white sm:text-[3.2rem]"
+      >
+        {name
+          ? <>Hi, <span className="italic bg-gradient-to-r from-clay-500 to-amber-500 bg-clip-text text-transparent">{name}</span></>
+          : "Hi there"}
+      </motion.h1>
+
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.16 }}
+        className="mt-3 max-w-md text-[15px] text-sand-600 dark:text-sand-300 font-normal leading-relaxed"
+      >
+        Your intelligent workspace for deep thinking, analysis, and creative problem solving.
+      </motion.p>
+
+      {/* Keyboard shortcut reminder */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="mt-4 text-[11px] text-sand-400 dark:text-sand-500"
+      >
+        <kbd className="rounded border border-sand-200 px-1 font-mono dark:border-sand-700">⌘K</kbd>
+        {" "}new chat &nbsp;·&nbsp;{" "}
+        <kbd className="rounded border border-sand-200 px-1 font-mono dark:border-sand-700">Esc</kbd>
+        {" "}stop generation
+      </motion.p>
+
+      {/* Suggestion cards */}
+      <div className="mt-8 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
+        {SUGGESTIONS.map((s, i) => (
+          <motion.button
+            key={s.title}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 * i + 0.3, type: "spring", stiffness: 340, damping: 28 }}
+            whileHover={{ y: -3, scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onPick(s.body)}
+            className="rounded-xl border border-sand-200 bg-white/80 p-4 text-left shadow-sm backdrop-blur transition hover:border-clay-400 hover:shadow-md dark:border-sand-700 dark:bg-sand-900/80 dark:hover:border-clay-500"
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <IconPlus className="h-3.5 w-3.5 text-clay-500" /> {s.title}
+            </div>
+            <div className="mt-1 text-xs text-sand-500 dark:text-sand-400">{s.body}</div>
+          </motion.button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}

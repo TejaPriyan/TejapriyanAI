@@ -1,0 +1,230 @@
+@import 'katex/dist/katex.min.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html, body { height: 100%; }
+
+body {
+  @apply bg-sand-50 text-ink dark:bg-sand-950 dark:text-sand-100 font-sans;
+  font-feature-settings: "cv02","cv03","cv04","ss01";
+}
+
+/* Light mode gets depth without sacrificing the calm, paper-like reading surface. */
+html:not(.dark) body {
+  background-color: #fafafc;
+  background-image:
+    radial-gradient(55rem 35rem at -10% -5%, rgba(249, 115, 22, 0.08), transparent 60%),
+    radial-gradient(45rem 30rem at 110% 10%, rgba(168, 85, 247, 0.07), transparent 60%),
+    linear-gradient(180deg, #fafafc 0%, #f4f4f8 100%);
+  background-attachment: fixed;
+}
+
+/* ---------- typography helpers ---------- */
+
+/**
+ * Display headlines use Instrument Serif. Serifs need looser tracking and a
+ * tighter leading than the bold sans they replace, so this class overrides the
+ * old sans-oriented values rather than reusing them.
+ */
+.display {
+  @apply font-display font-normal text-sand-900 dark:text-white;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+/* Optical correction: the serif reads large, so pull display sizes back a touch */
+.display em, .display i { @apply italic text-clay-500 dark:text-clay-400; }
+
+.measure { max-width: 68ch; text-wrap: pretty; }
+
+/* Small caps-ish label styling used for eyebrows */
+.label {
+  @apply font-mono text-[11px] font-semibold uppercase tracking-wider text-clay-600 dark:text-clay-400;
+  letter-spacing: 0.18em;
+}
+
+::selection { @apply bg-clay-200/80 text-ink; }
+.dark ::selection { @apply bg-clay-500/40 text-white; }
+
+/* Respect reduced-motion across the whole app */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html { scroll-behavior: smooth; }
+
+/* ---------- scrollbars ---------- */
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { @apply bg-sand-300/80 dark:bg-sand-700/80 rounded-full hover:bg-sand-400 dark:hover:bg-sand-600; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+
+/* ---------- ambient background effects (modern, visible, lively) ---------- */
+
+/* Soft paper grain */
+.grain::before {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: .025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark .grain::before { opacity: .04; }
+
+/* Faint dot grid */
+.dotgrid {
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Radiant aurora wash behind hero and chat */
+.aurora {
+  background:
+    radial-gradient(60% 50% at 15% 10%, rgba(249, 115, 22, 0.16), transparent 60%),
+    radial-gradient(55% 45% at 85% 20%, rgba(168, 85, 247, 0.14), transparent 60%),
+    radial-gradient(50% 50% at 50% 85%, rgba(59, 130, 246, 0.12), transparent 60%);
+}
+.dark .aurora {
+  background:
+    radial-gradient(65% 55% at 15% 10%, rgba(249, 115, 22, 0.18), transparent 65%),
+    radial-gradient(55% 45% at 85% 22%, rgba(139, 92, 246, 0.20), transparent 60%),
+    radial-gradient(50% 50% at 50% 88%, rgba(14, 165, 233, 0.15), transparent 60%);
+}
+
+/* Translucent chat surface with visible glowing depth */
+.chat-surface {
+  background:
+    radial-gradient(70% 50% at 50% 0%, rgba(249, 115, 22, 0.06), transparent 70%),
+    linear-gradient(180deg, rgba(250, 250, 252, 0.85) 0%, rgba(243, 243, 246, 0.95) 100%);
+}
+.dark .chat-surface {
+  background:
+    radial-gradient(70% 45% at 50% 0%, rgba(139, 92, 246, 0.10), transparent 70%),
+    radial-gradient(60% 50% at 85% 65%, rgba(249, 115, 22, 0.08), transparent 70%),
+    linear-gradient(180deg, #101017 0%, #0c0c12 100%);
+}
+
+/* ---- per-section backgrounds so the page has rhythm, not one flat field ---- */
+
+/* Slightly recessed panel — used for alternating sections */
+.bg-panel {
+  @apply bg-sand-100/70 dark:bg-sand-900/50;
+}
+
+/* Soft top-down gradient */
+.bg-wash {
+  background: linear-gradient(180deg, rgba(243,243,246,.85) 0%, rgba(250,250,252,0) 100%);
+}
+.dark .bg-wash {
+  background: linear-gradient(180deg, rgba(22,22,31,.75) 0%, rgba(12,12,18,0) 100%);
+}
+
+/* Warm radial glow anchored to corners */
+.bg-glow-left::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(45% 55% at 8% 20%, rgba(249, 115, 22, 0.09), transparent 65%);
+}
+.dark .bg-glow-left::before {
+  background: radial-gradient(45% 55% at 8% 20%, rgba(249, 115, 22, 0.14), transparent 65%);
+}
+.bg-glow-right::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(45% 55% at 92% 30%, rgba(139, 92, 246, 0.09), transparent 65%);
+}
+.dark .bg-glow-right::before {
+  background: radial-gradient(45% 55% at 92% 30%, rgba(139, 92, 246, 0.14), transparent 65%);
+}
+
+/* Fine ruled lines, like a notebook — very low contrast */
+.bg-rules {
+  background-image: repeating-linear-gradient(
+    to bottom, transparent, transparent 47px, rgba(150,139,123,.12) 47px, rgba(150,139,123,.12) 48px
+  );
+}
+.dark .bg-rules {
+  background-image: repeating-linear-gradient(
+    to bottom, transparent, transparent 47px, rgba(216,208,196,.06) 47px, rgba(216,208,196,.06) 48px
+  );
+}
+
+/* Diagonal hatch for the quote block */
+.bg-hatch {
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 12px, rgba(150,139,123,.07) 12px, rgba(150,139,123,.07) 13px
+  );
+}
+.dark .bg-hatch {
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 12px, rgba(216,208,196,.045) 12px, rgba(216,208,196,.045) 13px
+  );
+}
+
+/* Edge fade for marquees */
+.edge-fade {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* ---------- markdown prose ---------- */
+.md { @apply text-[16px] leading-7; }
+.md > * + * { @apply mt-4; }
+.md h1 { @apply text-2xl font-semibold tracking-tight mt-6; }
+.md h2 { @apply text-xl font-semibold tracking-tight mt-6; }
+.md h3 { @apply text-lg font-semibold mt-5; }
+.md ul { @apply list-disc pl-6 space-y-1.5; }
+.md ol { @apply list-decimal pl-6 space-y-1.5; }
+.md li > ul, .md li > ol { @apply mt-1.5; }
+.md a { @apply text-clay-700 dark:text-clay-300 underline underline-offset-2 decoration-clay-300 dark:decoration-clay-700; }
+.md blockquote { @apply border-l-2 border-sand-300 dark:border-sand-700 pl-4 italic text-sand-700 dark:text-sand-300; }
+.md hr { @apply border-sand-200 dark:border-sand-800; }
+.md table { @apply w-full text-sm border-collapse; }
+.md th, .md td { @apply border border-sand-200 dark:border-sand-800 px-3 py-2 text-left; }
+.md th { @apply bg-sand-100 dark:bg-sand-900 font-semibold; }
+.md :not(pre) > code {
+  @apply rounded bg-sand-100 dark:bg-sand-900 px-1.5 py-0.5 text-[13px] font-mono text-clay-700 dark:text-clay-300;
+}
+.md pre { @apply m-0 overflow-x-auto p-4 text-[13px] leading-6; }
+.md pre code { @apply font-mono bg-transparent p-0; }
+
+/* highlight.js — muted, warm-neutral syntax palette */
+.hljs-comment,.hljs-quote{color:#8b8378;font-style:italic}
+.hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-type{color:#e3856a}
+.hljs-string,.hljs-meta .hljs-string{color:#a8c3a0}
+.hljs-number,.hljs-symbol,.hljs-bullet{color:#d9b98a}
+.hljs-title,.hljs-section,.hljs-name{color:#c9b6e4}
+.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-template-variable{color:#e0a97e}
+.hljs-built_in,.hljs-class .hljs-title{color:#9dc4c0}
+.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}
+
+/* streaming caret — inline so it doesn't create a new block after code/tables */
+@keyframes caret { 0%,100%{opacity:1} 50%{opacity:0} }
+.caret > .md > *:last-child::after,
+.caret > .md::after {
+  content:"▍";
+  margin-left:2px;
+  animation:caret 1s steps(1) infinite;
+  @apply text-clay-500;
+  display: inline;
+}
+
+/* skeleton shimmer */
+.skeleton { @apply relative overflow-hidden bg-sand-200 dark:bg-sand-800 rounded; }
+.skeleton::after {
+  content:""; @apply absolute inset-0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+  transform: translateX(-100%); animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* ---------- KaTeX math styling ---------- */
+.md .katex-display { @apply my-4 overflow-x-auto; }
+.md .katex { font-size: 1.05em; }

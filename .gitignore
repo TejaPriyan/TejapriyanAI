@@ -1,5 +1,31 @@
+# Dependencies
 node_modules
+/.pnp
+.pnp.js
+
+# Next.js Build
 .next
-.env
-prisma/dev.db*
+/out/
+build
+dist
 *.tsbuildinfo
+next-env.d.ts
+
+# Environment Variables & Secrets
+.env
+.env*.local
+.env.production
+
+# SQLite Database & Engine Temps
+prisma/dev.db*
+*.tmp*
+
+# Debug & Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+*.pem

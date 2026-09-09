@@ -606,16 +606,16 @@ function BootScreen() {
       <motion.div
         animate={{ scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }}
         transition={{ duration: 1.5, repeat: Infinity }}
-        className="h-12 w-12 min-w-[48px] max-w-[48px] min-h-[48px] max-h-[48px] shrink-0 overflow-hidden rounded-2xl ring-2 ring-cyan-500/50 shadow-xl shadow-cyan-500/30"
+        className="h-14 w-14 min-w-[56px] max-w-[56px] min-h-[56px] max-h-[56px] shrink-0 flex items-center justify-center"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/images/tp-logo.png"
           alt="Teja Priyan AI"
-          width={48}
-          height={48}
-          className="h-full w-full object-contain"
-          style={{ width: 48, height: 48, maxWidth: 48, maxHeight: 48 }}
+          width={56}
+          height={56}
+          className="h-full w-full object-contain filter drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]"
+          style={{ width: 56, height: 56, maxWidth: 56, maxHeight: 56 }}
         />
       </motion.div>
     </div>
@@ -653,13 +653,13 @@ function EmptyState({ name, onPick }: { name: string; onPick: (t: string) => voi
         className="relative group mb-2"
       >
         <div className="absolute -inset-4 rounded-full bg-cyan-500/25 blur-2xl opacity-75 group-hover:opacity-100 transition duration-500" />
-        <div className="relative h-24 w-24 sm:h-28 sm:w-28 min-w-[96px] max-w-[112px] min-h-[96px] max-h-[112px] shrink-0 rounded-3xl overflow-hidden border border-cyan-500/30 shadow-2xl shadow-cyan-500/20 bg-sand-950/80 p-1 flex items-center justify-center">
+        <div className="relative h-24 w-24 sm:h-28 sm:w-28 min-w-[96px] max-w-[112px] min-h-[96px] max-h-[112px] shrink-0 flex items-center justify-center">
           <img
             src="/images/tp-logo.png"
             alt="Teja Priyan AI Emblem"
             width={112}
             height={112}
-            className="h-full w-full object-contain rounded-2xl"
+            className="h-full w-full object-contain filter drop-shadow-[0_8px_28px_rgba(56,189,248,0.4)]"
             style={{ width: "100%", height: "100%", maxWidth: 112, maxHeight: 112 }}
           />
         </div>

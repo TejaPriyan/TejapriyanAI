@@ -149,14 +149,14 @@ export function Sidebar(p: Props) {
     <div className="relative flex h-full w-[280px] flex-col border-r border-sand-200 bg-sand-100/70 backdrop-blur-xl dark:border-sand-800 dark:bg-sand-900/50">
       {/* Brand */}
       <div className="flex items-center gap-2 px-4 py-4">
-        <div className="flex h-8 w-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sand-900 ring-1 ring-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.25)]">
+        <div className="flex h-8 w-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] shrink-0 items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/tp-logo.png"
             alt="Teja Priyan AI"
             width={32}
             height={32}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-contain filter drop-shadow-[0_2px_8px_rgba(56,189,248,0.3)]"
             style={{ width: 32, height: 32, maxWidth: 32, maxHeight: 32 }}
           />
         </div>

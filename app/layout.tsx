@@ -23,7 +23,7 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tejapriyan.ai";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tejapriyan-ai.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -59,12 +59,20 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-48.png", type: "image/png", sizes: "48x48" },
+      { url: "/icon-96.png", type: "image/png", sizes: "96x96" },
+      { url: "/icon-144.png", type: "image/png", sizes: "144x144" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.png", type: "image/png", sizes: "192x192" },
     ],
-    shortcut: "/favicon.svg",
-    apple: "/apple-icon.png",
+    shortcut: "/favicon.ico",
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
+  manifest: "/manifest.webmanifest",
   openGraph: {
     title: "Teja Priyan AI — Official Intelligence Platform by Teja Priyan",
     description:
@@ -104,7 +112,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "87bb3bc53ec346d2",
   },
 };
 
@@ -130,10 +138,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         name: "Teja Priyan AI",
         alternateName: ["Teja Priyan", "TejaPriyan", "Teja Priyan Official AI", "Tejapriyan AI"],
         description: "The official multimodal artificial intelligence workspace by Teja Priyan.",
+        image: `${SITE_URL}/icon-512.png`,
         publisher: {
           "@type": "Person",
           name: "Teja Priyan",
           url: SITE_URL,
+          logo: {
+            "@type": "ImageObject",
+            url: `${SITE_URL}/icon-512.png`,
+            width: "512",
+            height: "512",
+          },
+        },
+      },
+      {
+        "@type": "Organization",
+        "@id": `${SITE_URL}/#organization`,
+        name: "Teja Priyan AI",
+        url: SITE_URL,
+        logo: `${SITE_URL}/icon-512.png`,
+        image: `${SITE_URL}/icon-512.png`,
+        founder: {
+          "@type": "Person",
+          name: "Teja Priyan",
         },
       },
       {
@@ -222,6 +249,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${inter.variable} ${instrument.variable} ${jetbrains.variable}`}
     >
       <head>
+        {/* Favicon & App Icons for Google Search & Browsers */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/icon-48.png" type="image/png" sizes="48x48" />
+        <link rel="icon" href="/icon-96.png" type="image/png" sizes="96x96" />
+        <link rel="icon" href="/icon-144.png" type="image/png" sizes="144x144" />
+        <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+        <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
+
+        {/* Google Search Console Ownership Verification */}
+        <meta name="google-site-verification" content="87bb3bc53ec346d2" />
+
         {/* Generative Engine Optimization (GEO) & Geographic Tags */}
         <meta name="geo.region" content="IN" />
         <meta name="geo.placename" content="Global" />

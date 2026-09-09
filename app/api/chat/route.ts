@@ -178,10 +178,16 @@ export async function POST(req: NextRequest) {
     };
   });
 
-  const userCount = await prisma.message.count({
-    where: { chatId: activeChatId, role: "user" },
-  });
-  const isFirstTurn = userCount === 1;
+  let isFirstTurn = false;
+  try {
+    const userCount = await prisma.message.count({
+      where: { chatId: activeChatId, role: "user" },
+    });
+    isFirstTurn = userCount === 1;
+  } catch {
+    // If DB is offline or read-only, infer first-turn status from the in-memory history
+    isFirstTurn = history.filter((m) => m.role === "user").length <= 1;
+  }
 
   /* ------------------------------ stream -------------------------------- */
   // Title generation runs CONCURRENTLY with the answer instead of serially
@@ -211,9 +217,13 @@ export async function POST(req: NextRequest) {
 
       if (!(await hasAnyProviderConfigured())) {
         send("token", { text: NO_KEYS_MESSAGE });
-        await prisma.message.create({
-          data: { chatId: activeChatId, role: "assistant", content: NO_KEYS_MESSAGE },
-        });
+        try {
+          await prisma.message.create({
+            data: { chatId: activeChatId, role: "assistant", content: NO_KEYS_MESSAGE },
+          });
+        } catch (err) {
+          console.warn("[/api/chat] Could not persist no-keys message to DB:", err);
+        }
         send("done", { chatId: activeChatId });
         controller.close();
         return;

@@ -37,16 +37,16 @@ export function NameModal({ open, onSubmit }: { open: boolean; onSubmit: (name: 
             <motion.div
               initial={{ rotate: -12, scale: 0.8 }} animate={{ rotate: 0, scale: 1 }}
               transition={{ delay: 0.08, type: "spring", stiffness: 260 }}
-              className="mx-auto flex h-14 w-14 min-w-[56px] max-w-[56px] min-h-[56px] max-h-[56px] shrink-0 items-center justify-center overflow-hidden rounded-2xl ring-2 ring-cyan-500/50 shadow-xl shadow-cyan-500/30"
+              className="mx-auto flex h-16 w-16 min-w-[64px] max-w-[64px] min-h-[64px] max-h-[64px] shrink-0 items-center justify-center"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/tp-logo.png"
                 alt="Teja Priyan AI"
-                width={56}
-                height={56}
-                className="h-full w-full object-contain"
-                style={{ width: 56, height: 56, maxWidth: 56, maxHeight: 56 }}
+                width={64}
+                height={64}
+                className="h-full w-full object-contain filter drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]"
+                style={{ width: 64, height: 64, maxWidth: 64, maxHeight: 64 }}
               />
             </motion.div>
 

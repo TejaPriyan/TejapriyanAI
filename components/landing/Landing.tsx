@@ -177,13 +177,13 @@ export default function Landing() {
       >
         <nav className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] shrink-0 items-center justify-center rounded-xl overflow-hidden border border-cyan-500/30 bg-sand-950 p-0.5 shadow-md shadow-cyan-500/20">
+            <span className="flex h-9 w-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] shrink-0 items-center justify-center">
               <img
                 src="/images/tp-logo.png"
                 alt="Teja Priyan AI Logo"
                 width={36}
                 height={36}
-                className="h-full w-full max-h-[36px] max-w-[36px] shrink-0 object-contain rounded-lg"
+                className="h-full w-full max-h-[36px] max-w-[36px] shrink-0 object-contain filter drop-shadow-[0_2px_8px_rgba(56,189,248,0.3)]"
                 style={{ width: 36, height: 36, maxWidth: 36, maxHeight: 36 }}
               />
             </span>

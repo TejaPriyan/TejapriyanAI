@@ -112,7 +112,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "87bb3bc53ec346d2",
+    google: ["2af4e1ed3191321d", "87bb3bc53ec346d2"],
   },
 };
 
@@ -259,6 +259,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
 
         {/* Google Search Console Ownership Verification */}
+        <meta name="google-site-verification" content="2af4e1ed3191321d" />
         <meta name="google-site-verification" content="87bb3bc53ec346d2" />
 
         {/* Generative Engine Optimization (GEO) & Geographic Tags */}

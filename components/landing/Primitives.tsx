@@ -12,19 +12,26 @@ import {
 /* ---------- easing shared across the site ---------- */
 export const EASE = [0.22, 1, 0.36, 1] as const;
 
-/** Fades + lifts children into view once, when scrolled to. */
+/** Fades + lifts children into view gracefully, never hiding content if JavaScript or inView is delayed. */
 export function Reveal({
-  children, delay = 0, y = 22, className = "",
+  children, delay = 0, y = 16, className = "",
 }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-12% 0px -12% 0px" });
+  const inView = useInView(ref, { once: true, margin: "0px 0px -40px 0px" });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.75, delay, ease: EASE }}
+      initial={false}
+      animate={mounted && inView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay, ease: EASE }}
       className={className}
+      style={{ opacity: 1 }}
     >
       {children}
     </motion.div>
@@ -36,14 +43,15 @@ export function RevealGroup({
   children, className = "", stagger = 0.08,
 }: { children: React.ReactNode; className?: string; stagger?: number }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10% 0px" });
+  const inView = useInView(ref, { once: true, margin: "0px 0px -40px 0px" });
   return (
     <motion.div
       ref={ref}
-      initial="hidden"
-      animate={inView ? "show" : "hidden"}
+      initial={false}
+      animate="show"
       variants={{ show: { transition: { staggerChildren: stagger } } }}
       className={className}
+      style={{ opacity: 1 }}
     >
       {children}
     </motion.div>
@@ -55,10 +63,11 @@ export const RevealItem = ({
 }: { children: React.ReactNode; className?: string }) => (
   <motion.div
     variants={{
-      hidden: { opacity: 0, y: 20 },
-      show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+      hidden: { opacity: 1, y: 0 },
+      show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
     }}
     className={className}
+    style={{ opacity: 1 }}
   >
     {children}
   </motion.div>

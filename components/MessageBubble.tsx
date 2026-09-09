@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Markdown } from "./Markdown";
-import { IconCopy, IconCheck, IconRefresh, IconSpark, IconVolume, IconVolumeOff } from "./Icons";
+import { IconCopy, IconCheck, IconRefresh, IconVolume, IconVolumeOff } from "./Icons";
 import type { UiMessage } from "@/lib/types";
 
 /* word + char count helper */
@@ -111,9 +111,17 @@ export function MessageBubble({
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ ...SPRING, delay: 0.05 }}
-          className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-sand-50 shadow-sm dark:bg-sand-100 dark:text-ink"
+          className="mt-1 flex h-8 w-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sand-900 ring-1 ring-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
         >
-          <IconSpark className="h-4 w-4" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/tp-logo.png"
+            alt="Teja Priyan AI"
+            width={32}
+            height={32}
+            className="h-full w-full object-contain"
+            style={{ width: 32, height: 32, maxWidth: 32, maxHeight: 32 }}
+          />
         </motion.div>
       )}
 

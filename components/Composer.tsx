@@ -12,11 +12,11 @@ import {
   IconZap,
 } from "./Icons";
 
-const EFFORTS: { id: EffortLevel; label: string; hint: string; color: string }[] = [
-  { id: "fast",  label: "Fast",  hint: "Quick, concise answers",          color: "" },
-  { id: "think", label: "Think", hint: "More reasoning and detail",        color: "" },
-  { id: "max",   label: "Max",   hint: "Deepest, most thorough answers",   color: "" },
-  { id: "ultra", label: "Ultra", hint: "Maximum depth — all working shown", color: "text-clay-600 dark:text-clay-400" },
+const EFFORTS: { id: EffortLevel; label: string; hint: string }[] = [
+  { id: "fast",  label: "Fast",  hint: "Ultra-fast direct answers with zero latency" },
+  { id: "think", label: "Think", hint: "Step-by-step logic and structured reasoning" },
+  { id: "max",   label: "Max",   hint: "Deep architectural synthesis & comprehensive solutions" },
+  { id: "ultra", label: "Ultra", hint: "Maximum cognitive depth · Full proofs & complete code" },
 ];
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -299,16 +299,27 @@ export function Composer({
             ))}
           </div>
 
-          {/* Ultra indicator */}
-          <AnimatePresence>
-            {isUltra && (
-              <motion.span
-                initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-                className="text-[11px] font-medium text-clay-500 dark:text-clay-400"
-              >
-                Maximum depth · 12k tokens
-              </motion.span>
-            )}
+          {/* Depth status indicator */}
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={effort}
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              className={`text-[11px] font-medium ${
+                effort === "ultra"
+                  ? "font-semibold text-clay-600 dark:text-clay-400"
+                  : "text-sand-400"
+              }`}
+            >
+              {effort === "ultra"
+                ? "Maximum cognitive depth · Full reasoning & proofs"
+                : effort === "max"
+                ? "Deep technical synthesis & edge cases"
+                : effort === "think"
+                ? "Structured step-by-step reasoning"
+                : "Ultra-fast response"}
+            </motion.span>
           </AnimatePresence>
 
           <span className="ml-auto hidden text-[11px] text-sand-400 sm:block">

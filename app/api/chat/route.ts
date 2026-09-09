@@ -103,48 +103,64 @@ export async function POST(req: NextRequest) {
   }
 
   /* ---------------------- resolve / create the chat --------------------- */
-  let chat = chatId
-    ? await prisma.chat.findUnique({ where: { id: chatId } })
-    : null;
-  // Ownership check: never let a user write into someone else's thread.
-  if (chat && chat.userId !== userId) chat = null;
-  if (!chat) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return new Response("Unauthorized", { status: 401 });
-    chat = await prisma.chat.create({ data: { userId } });
+  let activeChatId = chatId || "";
+  try {
+    let chat = chatId
+      ? await prisma.chat.findUnique({ where: { id: chatId } })
+      : null;
+    // Ownership check: never let a user write into someone else's thread.
+    if (chat && chat.userId !== userId) chat = null;
+    if (!chat) {
+      chat = await prisma.chat.create({ data: { userId } }).catch(() => null);
+    }
+    if (chat) activeChatId = chat.id;
+  } catch (err) {
+    console.warn("[/api/chat] DB chat resolve/create failed, using ephemeral id:", err);
   }
-  const activeChatId = chat.id;
+  if (!activeChatId) activeChatId = `c_${Date.now()}`;
 
   /* ------------------------- persist user turn -------------------------- */
-  if (regenerate) {
-    // Drop the trailing assistant message so we can produce a fresh one.
-    const last = await prisma.message.findFirst({
-      where: { chatId: activeChatId },
-      orderBy: { createdAt: "desc" },
-    });
-    if (last?.role === "assistant") {
-      await prisma.message.delete({ where: { id: last.id } });
+  try {
+    if (regenerate) {
+      // Drop the trailing assistant message so we can produce a fresh one.
+      const last = await prisma.message.findFirst({
+        where: { chatId: activeChatId },
+        orderBy: { createdAt: "desc" },
+      });
+      if (last?.role === "assistant") {
+        await prisma.message.delete({ where: { id: last.id } });
+      }
+    } else {
+      await prisma.message.create({
+        data: {
+          chatId: activeChatId,
+          role: "user",
+          content: text,
+          imageData: image ?? null,
+        },
+      });
     }
-  } else {
-    await prisma.message.create({
-      data: {
-        chatId: activeChatId,
-        role: "user",
-        content: text,
-        imageData: image ?? null,
-      },
-    });
+  } catch (err) {
+    console.warn("[/api/chat] DB user turn persist failed (e.g. read-only filesystem):", err);
   }
 
   /* --------------------- build the model conversation ------------------- */
-  // Newest N messages, then restored to chronological order — the OLD code
-  // took the *oldest* N, so long chats fed the model their own beginning.
-  const recent = await prisma.message.findMany({
-    where: { chatId: activeChatId },
-    orderBy: { createdAt: "desc" },
-    take: HISTORY_WINDOW[effort as EffortLevel] ?? 30,
-  });
-  const history = recent.reverse();
+  let history: { role: string; content: string; imageData?: string | null }[] = [];
+  try {
+    const recent = await prisma.message.findMany({
+      where: { chatId: activeChatId },
+      orderBy: { createdAt: "desc" },
+      take: HISTORY_WINDOW[effort as EffortLevel] ?? 30,
+    });
+    history = recent.reverse();
+  } catch {
+    // If DB is offline, conversation still proceeds with current turn
+    history = [{ role: "user", content: text, imageData: image ?? null }];
+  }
+
+  if (history.length === 0) {
+    history = [{ role: "user", content: text, imageData: image ?? null }];
+  }
 
   // Only the latest user image is sent to the model: every older image would
   // be re-uploaded (and paid for) on each turn and would force the whole
@@ -228,20 +244,24 @@ export async function POST(req: NextRequest) {
 
       // Persist whatever was produced (partial answers included, like ChatGPT).
       if (full.trim()) {
-        await prisma.message.create({
-          data: { chatId: activeChatId, role: "assistant", content: full },
-        });
-        await prisma.chat.update({
-          where: { id: activeChatId },
-          data: { updatedAt: new Date() },
-        });
+        try {
+          await prisma.message.create({
+            data: { chatId: activeChatId, role: "assistant", content: full },
+          });
+          await prisma.chat.update({
+            where: { id: activeChatId },
+            data: { updatedAt: new Date() },
+          });
+        } catch (err) {
+          console.warn("[/api/chat] Could not persist assistant message to DB:", err);
+        }
       }
 
       // Auto-title from the first user message.
       if (titlePromise) {
         try {
           const title = await titlePromise;
-          await prisma.chat.update({ where: { id: activeChatId }, data: { title } });
+          await prisma.chat.update({ where: { id: activeChatId }, data: { title } }).catch(() => null);
           send("title", { chatId: activeChatId, title });
         } catch {
           /* heuristic fallback already applied inside generateTitle */

@@ -2,7 +2,6 @@
 /** First-visit onboarding: asks only for a name. No password, no email. */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { IconSpark } from "./Icons";
 
 export function NameModal({ open, onSubmit }: { open: boolean; onSubmit: (name: string) => void }) {
   const [name, setName] = useState("");
@@ -12,8 +11,13 @@ export function NameModal({ open, onSubmit }: { open: boolean; onSubmit: (name: 
     const n = name.trim();
     if (!n || busy) return;
     setBusy(true);
-    await onSubmit(n);
-    setBusy(false);
+    try {
+      await onSubmit(n);
+    } catch (err) {
+      console.error("[NameModal] Submit failed:", err);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -33,9 +37,17 @@ export function NameModal({ open, onSubmit }: { open: boolean; onSubmit: (name: 
             <motion.div
               initial={{ rotate: -12, scale: 0.8 }} animate={{ rotate: 0, scale: 1 }}
               transition={{ delay: 0.08, type: "spring", stiffness: 260 }}
-              className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-ink text-sand-50 shadow-lg dark:bg-sand-100 dark:text-ink"
+              className="mx-auto flex h-14 w-14 min-w-[56px] max-w-[56px] min-h-[56px] max-h-[56px] shrink-0 items-center justify-center overflow-hidden rounded-2xl ring-2 ring-cyan-500/50 shadow-xl shadow-cyan-500/30"
             >
-              <IconSpark className="h-7 w-7" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/tp-logo.png"
+                alt="Teja Priyan AI"
+                width={56}
+                height={56}
+                className="h-full w-full object-contain"
+                style={{ width: 56, height: 56, maxWidth: 56, maxHeight: 56 }}
+              />
             </motion.div>
 
             <h1 className="display mt-6 text-center text-[2rem] leading-tight">

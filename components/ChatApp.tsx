@@ -96,15 +96,26 @@ export default function ChatApp() {
     } catch {}
     setSidebarOpen(window.innerWidth >= 1024);
 
+    if (stored) {
+      setUser(stored);
+      setReady(true); // Instant load for returning visitors — zero spinner wait
+    }
+
+    // Unconditional safety fallback: ensure the app NEVER stays stuck on BootScreen
+    const safetyTimer = setTimeout(() => {
+      setReady(true);
+    }, 800);
+
     (async () => {
       try {
-        const res = await fetch("/api/user");
+        const res = await fetch("/api/user", { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
           const u = await res.json();
           if (u?.id) {
             setUser(u);
             try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch {}
             setReady(true);
+            clearTimeout(safetyTimer);
             return;
           }
         }
@@ -114,6 +125,7 @@ export default function ChatApp() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: stored.name, userId: stored.id }),
+            signal: AbortSignal.timeout(2000),
           });
           if (r.ok) {
             const u = await r.json();
@@ -123,9 +135,15 @@ export default function ChatApp() {
             }
           }
         }
-      } catch {}
-      setReady(true);
+      } catch (err) {
+        console.warn("[ChatApp] Session bootstrap resolved via fallback:", err);
+      } finally {
+        clearTimeout(safetyTimer);
+        setReady(true);
+      }
     })();
+
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   useEffect(() => {
@@ -180,32 +198,53 @@ export default function ChatApp() {
 
   /* ── identity ── */
   const registerName = useCallback(async (name: string) => {
-    // If an older account id is cached, pass it along so the server can
-    // re-attach the session to the same account (history is preserved).
     let legacyId: string | undefined;
     try {
       const raw = localStorage.getItem(LS_USER);
       if (raw) legacyId = JSON.parse(raw).id;
     } catch {}
-    const res = await fetch("/api/user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, userId: legacyId }),
-    });
-    const u = await res.json();
-    setUser(u);
-    try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch {}
+
+    try {
+      const res = await fetch("/api/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, userId: legacyId }),
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const u = await res.json();
+        if (u?.id) {
+          setUser(u);
+          try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch {}
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("[ChatApp] /api/user error, applying client session fallback:", err);
+    }
+
+    // Resilient fallback: ensure user enters chat immediately without sticking
+    const fallback = { id: legacyId || `u_${Date.now()}`, name };
+    setUser(fallback);
+    try { localStorage.setItem(LS_USER, JSON.stringify(fallback)); } catch {}
   }, []);
 
   /* ── chat list ── */
   const loadChats = useCallback(
     async (q = "") => {
       if (!user) return;
-      const url = `/api/chats${q ? `?q=${encodeURIComponent(q)}` : ""}`;
-      const res  = await fetch(url);
-      const data = await res.json();
-      setChats(data.chats ?? []);
-      setChatsLoading(false);
+      try {
+        const url = `/api/chats${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+        const res  = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setChats(data.chats ?? []);
+        }
+      } catch (err) {
+        console.warn("[ChatApp] loadChats failed:", err);
+      } finally {
+        setChatsLoading(false);
+      }
     },
     [user]
   );
@@ -565,11 +604,19 @@ function BootScreen() {
     <div className="flex h-[100dvh] items-center justify-center">
       <div className="aurora pointer-events-none absolute inset-0" />
       <motion.div
-        animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
+        animate={{ scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }}
         transition={{ duration: 1.5, repeat: Infinity }}
-        className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30"
+        className="h-12 w-12 min-w-[48px] max-w-[48px] min-h-[48px] max-h-[48px] shrink-0 overflow-hidden rounded-2xl ring-2 ring-cyan-500/50 shadow-xl shadow-cyan-500/30"
       >
-        <IconSpark className="h-6 w-6" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/tp-logo.png"
+          alt="Teja Priyan AI"
+          width={48}
+          height={48}
+          className="h-full w-full object-contain"
+          style={{ width: 48, height: 48, maxWidth: 48, maxHeight: 48 }}
+        />
       </motion.div>
     </div>
   );
@@ -599,15 +646,22 @@ function EmptyState({ name, onPick }: { name: string; onPick: (t: string) => voi
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col items-center justify-center py-8 text-center sm:py-14"
     >
-      {/* Animated logo */}
+      {/* Animated Glowing TP Emblem */}
       <motion.div
-        animate={{ y: [0, -7, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        className="relative"
+        animate={{ y: [0, -8, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        className="relative group mb-2"
       >
-        <div className="absolute inset-0 rounded-2xl bg-orange-500/25 blur-xl" />
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-xl shadow-orange-500/30">
-          <IconSpark className="h-8 w-8" />
+        <div className="absolute -inset-4 rounded-full bg-cyan-500/25 blur-2xl opacity-75 group-hover:opacity-100 transition duration-500" />
+        <div className="relative h-24 w-24 sm:h-28 sm:w-28 min-w-[96px] max-w-[112px] min-h-[96px] max-h-[112px] shrink-0 rounded-3xl overflow-hidden border border-cyan-500/30 shadow-2xl shadow-cyan-500/20 bg-sand-950/80 p-1 flex items-center justify-center">
+          <img
+            src="/images/tp-logo.png"
+            alt="Teja Priyan AI Emblem"
+            width={112}
+            height={112}
+            className="h-full w-full object-contain rounded-2xl"
+            style={{ width: "100%", height: "100%", maxWidth: 112, maxHeight: 112 }}
+          />
         </div>
       </motion.div>
 

@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  motion, useScroll, useTransform, useSpring, AnimatePresence,
+  motion, useScroll, useSpring, AnimatePresence,
 } from "framer-motion";
 import { useTheme } from "@/components/ThemeProvider";
 import {
-  Reveal, RevealGroup, RevealItem, AnimatedWords, Counter,
+  Reveal, RevealGroup, RevealItem, Counter,
   Eyebrow, Section, MagneticButton, EASE,
 } from "./Primitives";
 import { LatencyChart, ReliabilityChart, RoutingDonut, ThroughputChart } from "./Charts";
@@ -79,9 +79,9 @@ const COMPARISON = [
   { f: "Native image & vision analysis",    a: true, b: "Usually paid tier" },
   { f: "No passwords or subscriptions",     a: true, b: "Credit card required" },
   { f: "Conversation history & search",     a: true, b: "Varies" },
-  { f: "Adaptive answer formatting chips",  a: true, b: "Not available" },
+  { f: "Interactive Live Code & Game Sandbox", a: true, b: "Not available" },
   { f: "Markdown & Text thread export",     a: true, b: "Not available" },
-  { f: "Ultra 12,000-token depth mode",     a: true, b: "Not available" },
+  { f: "Ultra cognitive depth reasoning",   a: true, b: "Not available" },
 ];
 
 const FAQS = [
@@ -95,7 +95,7 @@ const FAQS = [
   },
   {
     q: "What do the depth settings actually change?",
-    a: "Fast (1k tokens, rapid TTFT) for quick answers. Think (2.6k tokens) for structured problem-solving. Max (6k tokens) for comprehensive multi-perspective research. Ultra (12k tokens) for the deepest possible breakdown — edge cases, proofs, and exhaustive depth.",
+    a: "Fast provides high-speed concise answers. Think engages structured step-by-step logic. Max handles comprehensive system design and deep technical research. Ultra operates at maximum cognitive depth for exhaustive proofs, edge-case breakdowns, and complete working implementations.",
   },
   {
     q: "How are replies formatted?",
@@ -142,10 +142,6 @@ export default function Landing() {
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 28, restDelta: 0.001 });
 
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress: heroP } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const heroY    = useTransform(heroP, [0, 1], [0, 100]);
-  const heroFade = useTransform(heroP, [0, 0.8], [1, 0]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -181,8 +177,15 @@ export default function Landing() {
       >
         <nav className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25">
-              <IconSpark className="h-4 w-4" />
+            <span className="flex h-9 w-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] shrink-0 items-center justify-center rounded-xl overflow-hidden border border-cyan-500/30 bg-sand-950 p-0.5 shadow-md shadow-cyan-500/20">
+              <img
+                src="/images/tp-logo.png"
+                alt="Teja Priyan AI Logo"
+                width={36}
+                height={36}
+                className="h-full w-full max-h-[36px] max-w-[36px] shrink-0 object-contain rounded-lg"
+                style={{ width: 36, height: 36, maxWidth: 36, maxHeight: 36 }}
+              />
             </span>
             <span className="font-display text-[20px] font-semibold tracking-tight text-sand-950 dark:text-white">
               Teja Priyan AI
@@ -237,52 +240,68 @@ export default function Landing() {
       </header>
 
       {/* ── hero ── */}
-      <div ref={heroRef} className="relative">
+      <div className="relative">
         <div className="aurora grain pointer-events-none absolute inset-0" />
         <div className="dotgrid pointer-events-none absolute inset-0 text-sand-300/35 dark:text-sand-700/20"
           style={{ maskImage: "radial-gradient(70% 55% at 50% 35%, #000, transparent)",
                    WebkitMaskImage: "radial-gradient(70% 55% at 50% 35%, #000, transparent)" }} />
 
-        <motion.div style={{ y: heroY, opacity: heroFade }}
-          className="relative mx-auto max-w-6xl px-6 pb-28 pt-36 sm:pt-44 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE }}
-            className="mb-8 inline-flex items-center gap-2 rounded-full border border-sand-300/90 bg-white/70 px-4 py-1.5 text-xs font-medium text-sand-800 shadow-sm backdrop-blur-md dark:border-sand-700/90 dark:bg-sand-900/70 dark:text-sand-200">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-clay-500 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-clay-500" />
-            </span>
-            ✨ Multimodal Intelligence · Adaptive Reasoning Depths · Zero Setup Required
-          </motion.div>
+        <div className="relative mx-auto max-w-6xl px-6 pb-28 pt-36 sm:pt-44 lg:px-8">
+          <div className="grid items-center gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-7">
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-sand-300/90 bg-white/70 px-4 py-1.5 text-xs font-medium text-sand-800 shadow-sm backdrop-blur-md dark:border-sand-700/90 dark:bg-sand-900/70 dark:text-sand-200">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-500" />
+                </span>
+                ✨ Teja Priyan Neural Architecture · Adaptive Deep Reasoning · Zero Friction
+              </div>
 
-          <h1 className="display text-[clamp(2.9rem,8.2vw,6.5rem)] font-normal leading-[1.02] tracking-tight">
-            <AnimatedWords text="Intelligence," delay={0.1} />
-            <br />
-            <span className="italic bg-gradient-to-r from-clay-500 via-amber-500 to-rose-500 bg-clip-text text-transparent">
-              <AnimatedWords text="without the friction." delay={0.28} />
-            </span>
-          </h1>
+              <h1 className="display text-[clamp(2.8rem,7vw,5.5rem)] font-normal leading-[1.02] tracking-tight text-sand-950 dark:text-white">
+                Intelligence,
+                <br />
+                <span className="italic bg-gradient-to-r from-cyan-400 via-sky-400 to-amber-400 bg-clip-text text-transparent">
+                  without the friction.
+                </span>
+              </h1>
 
-          <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.62, ease: EASE }}
-            className="measure mt-8 text-lg font-normal leading-relaxed text-sand-600 dark:text-sand-300 sm:text-xl">
-            Teja Priyan AI streams thoughts in real time, understands visual attachments, and adapts
-            seamlessly to your preferred depth. Enter your name and begin — pure intelligence, zero friction.
-          </motion.p>
+              <p className="measure mt-8 text-lg font-normal leading-relaxed text-sand-600 dark:text-sand-300 sm:text-xl">
+                Teja Priyan AI streams thoughts in real time, understands visual attachments, generates runnable interactive code with live sandbox preview, and adapts seamlessly to your preferred reasoning depth.
+              </p>
 
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.76, ease: EASE }}
-            className="mt-10 flex flex-wrap items-center gap-3.5">
-            <Link href="/chat">
-              <MagneticButton>
-                Start a conversation
-                <span aria-hidden className="text-lg leading-none">→</span>
-              </MagneticButton>
-            </Link>
-            <a href="#about">
-              <MagneticButton variant="ghost">Learn more</MagneticButton>
-            </a>
-          </motion.div>
+              <div className="mt-10 flex flex-wrap items-center gap-3.5">
+                <Link href="/chat">
+                  <MagneticButton>
+                    Start a conversation
+                    <span aria-hidden className="text-lg leading-none">→</span>
+                  </MagneticButton>
+                </Link>
+                <a href="#about">
+                  <MagneticButton variant="ghost">Learn more</MagneticButton>
+                </a>
+              </div>
+            </div>
+
+            {/* Hero Visual Orb */}
+            <div className="flex justify-center lg:col-span-5">
+              <div className="relative flex items-center justify-center">
+                <div className="absolute -inset-8 rounded-full bg-gradient-to-tr from-purple-600/30 via-amber-500/25 to-cyan-500/30 blur-3xl pointer-events-none" />
+                <motion.div
+                  animate={{ y: [0, -14, 0], rotate: [0, 3, 0] }}
+                  transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative h-64 w-64 sm:h-80 sm:w-80 md:h-96 md:w-96"
+                >
+                  <img
+                    src="/images/ai-sphere.png"
+                    alt="Teja Priyan AI Intelligence Core"
+                    width={384}
+                    height={384}
+                    className="h-full w-full object-contain filter drop-shadow-[0_20px_60px_rgba(245,158,11,0.35)]"
+                  />
+                </motion.div>
+              </div>
+            </div>
+          </div>
 
           {/* hero stats */}
           <RevealGroup className="mt-20 grid grid-cols-2 gap-x-8 gap-y-10 border-t border-sand-200/90 pt-10 sm:grid-cols-4 dark:border-sand-800/90">
@@ -300,7 +319,7 @@ export default function Landing() {
               </RevealItem>
             ))}
           </RevealGroup>
-        </motion.div>
+        </div>
       </div>
 
       {/* ── marquee ── */}
@@ -359,6 +378,24 @@ export default function Landing() {
                   and feels like a bespoke instrument crafted for deep productivity.
                 </p>
               </Reveal>
+
+              {/* Crystal Prism Visual */}
+              <Reveal delay={0.24}>
+                <div className="mt-8 overflow-hidden rounded-2xl border border-sand-200/90 dark:border-sand-800/90 shadow-xl bg-sand-950/40 backdrop-blur-md">
+                  <div className="relative h-48 sm:h-56 w-full overflow-hidden">
+                    <img
+                      src="/images/crystal-star.jpg"
+                      alt="Prismatic Multi-Model Synthesis"
+                      className="h-full w-full object-cover object-center transform hover:scale-105 transition duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-sand-950/90 via-transparent to-transparent flex items-end p-5">
+                      <span className="text-xs font-mono text-cyan-400 font-medium tracking-wide">
+                        ✦ Prismatic Cognitive Architecture · Multi-Tier Neural Fallback
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
             </div>
           </div>
         </Section>
@@ -402,6 +439,31 @@ export default function Landing() {
               High throughput isn't an afterthought — it is engineered into every layer, from sub-second
               first-token latency to sustained 140+ token/s output.
             </p>
+          </Reveal>
+
+          {/* Futuristic Technology Infrastructure Banner */}
+          <Reveal className="mt-12 overflow-hidden rounded-3xl border border-sand-200/90 dark:border-sand-800/90 shadow-2xl relative">
+            <div className="relative h-56 sm:h-72 w-full overflow-hidden">
+              <img
+                src="/images/tech-future.jpg"
+                alt="Future of Technology Infrastructure"
+                className="h-full w-full object-cover object-center transform hover:scale-105 transition duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-sand-950 via-sand-950/50 to-transparent flex items-end p-6 sm:p-8">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-cyan-400 mb-1.5">
+                    <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                    Neural Mesh Pipeline
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-semibold text-white">
+                    Autonomous Multi-Tier Neural Intelligence Engine
+                  </h3>
+                  <p className="mt-1 text-sm text-sand-300 max-w-xl">
+                    Dynamic cognitive routing with instantaneous zero-downtime failover across high-throughput reasoning and architecture layers.
+                  </p>
+                </div>
+              </div>
+            </div>
           </Reveal>
 
           <div className="mt-16 grid gap-6 lg:grid-cols-12">
@@ -463,8 +525,9 @@ export default function Landing() {
                     <tbody>
                       {COMPARISON.map((r, i) => (
                         <motion.tr key={r.f}
-                          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
-                          transition={{ duration: 0.45, delay: i * 0.04 }}
+                          initial={false}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.35, delay: i * 0.03 }}
                           className="border-b border-sand-100/70 last:border-0 dark:border-sand-800/60">
                           <td className="px-6 py-3.5 font-medium text-sand-800 dark:text-sand-200">{r.f}</td>
                           <td className="px-6 py-3.5">
@@ -556,7 +619,7 @@ export default function Landing() {
                 },
                 {
                   title: "Unbounded flexibility",
-                  body: "Run it locally or host it in the cloud. Four depths give you total freedom from quick one-liners to 12k-token technical dissertations.",
+                  body: "Run it locally or host it in the cloud. Four depths give you total freedom from quick one-liners to exhaustive research dissertations.",
                   icon: "🌐",
                 },
               ].map((card) => (
@@ -572,20 +635,33 @@ export default function Landing() {
             </RevealGroup>
           </div>
 
-          {/* stat row */}
-          <RevealGroup className="mt-12 grid grid-cols-2 gap-6 border-t border-sand-200/80 pt-10 sm:grid-cols-4 dark:border-sand-800/80">
-            {[
-              { v: <Counter value={12000} suffix=" tokens" />, l: "Ultra mode budget" },
-              { v: <Counter value={180}   suffix="s" />,       l: "Ultra timeout buffer" },
-              { v: <Counter value={5} />,                      l: "Format chips" },
-              { v: <Counter value={0} suffix=" card" />,       l: "Credit card required" },
-            ].map((s, i) => (
-              <RevealItem key={i}>
-                <div className="font-display text-[2rem] font-semibold tabular-nums leading-tight text-sand-900 dark:text-white sm:text-[2.4rem]">{s.v}</div>
-                <div className="mt-1 text-sm font-medium text-sand-500 dark:text-sand-400">{s.l}</div>
-              </RevealItem>
-            ))}
-          </RevealGroup>
+          {/* stat row & Luxury Monogram */}
+          <div className="mt-12 flex flex-col md:flex-row items-center gap-8 border-t border-sand-200/80 pt-10 dark:border-sand-800/80">
+            <div className="flex-shrink-0 flex items-center gap-4 p-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 backdrop-blur-md">
+              <img
+                src="/images/tp-monogram-gold.png"
+                alt="Teja Priyan Hallmark"
+                className="h-14 w-14 object-contain rounded-xl shadow-lg"
+              />
+              <div>
+                <span className="text-xs font-mono font-semibold uppercase text-amber-500">Official Platform</span>
+                <div className="text-sm font-semibold text-sand-950 dark:text-white">Teja Priyan AI</div>
+              </div>
+            </div>
+
+            <RevealGroup className="flex-1 grid grid-cols-2 gap-6 sm:grid-cols-3">
+              {[
+                { v: "Ultra",                            l: "Maximum Cognitive Depth" },
+                { v: <Counter value={180} suffix="s" />, l: "Ultra timeout buffer" },
+                { v: "100% Free",                        l: "No credit card needed" },
+              ].map((s, i) => (
+                <RevealItem key={i}>
+                  <div className="font-display text-[2rem] font-semibold tabular-nums leading-tight text-sand-900 dark:text-white sm:text-[2.4rem]">{s.v}</div>
+                  <div className="mt-1 text-sm font-medium text-sand-500 dark:text-sand-400">{s.l}</div>
+                </RevealItem>
+              ))}
+            </RevealGroup>
+          </div>
         </Section>
       </div>
 

@@ -39,3 +39,10 @@ export const IconTable = s(<><rect x="3" y="3" width="18" height="18" rx="2" /><
 export const IconFlow = s(<><rect x="3" y="3" width="7" height="5" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="8.5" y="16" width="7" height="5" rx="1" /><path d="M6.5 8v3h11V8M12 11v5" /></>);
 export const IconSteps = s(<><path d="M3 20h4v-4H3zM9 20h4v-8H9zM15 20h4V4h-4" /></>);
 export const IconBulb = s(<><path d="M9 18h6M10 22h4M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17H8v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z" /></>);
+export const IconPlay = s(<><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" /></>);
+export const IconCode = s(<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>);
+export const IconMaximize = s(<><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" /></>);
+export const IconMinimize = s(<><path d="M4 14h6v6m10-10h-6V4m0 6l7-7M10 14l-7 7" /></>);
+export const IconExternal = s(<><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" /></>);
+export const IconColumns = s(<><rect x="4" y="4" width="7" height="16" rx="1" /><rect x="13" y="4" width="7" height="16" rx="1" /></>);
+export const IconExpand = s(<><polyline points="7 15 12 20 17 15" /><polyline points="7 9 12 4 17 9" /></>);

@@ -16,6 +16,8 @@ export type ChatMessage = {
 };
 
 export type ProviderName =
+  | "nvidia"
+  | "bytez"
   | "ollama"
   | "groq"
   | "google"
@@ -47,24 +49,30 @@ export type ModelRoute = {
 /* -------------------------------------------------------------------------- */
 
 const DEFAULT_ROUTES: ModelRoute[] = [
-  // --- Ollama: 100% free, NO API KEY, runs locally, no quota ever. ---------
-  // Tried first whenever the local server is reachable. Any model listed here
-  // that you haven't pulled is skipped automatically (we check `/api/tags`).
-  { rank: 1, provider: "ollama", model: "qwen3:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
-  { rank: 2, provider: "ollama", model: "gemma3:4b", keyEnv: "NONE", effort: ["fast"], vision: true },
-  { rank: 3, provider: "ollama", model: "gemma3:12b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
-  { rank: 4, provider: "ollama", model: "qwen3:14b", keyEnv: "NONE", effort: ["think", "max"], vision: false },
-  { rank: 5, provider: "ollama", model: "qwen2.5vl:7b", keyEnv: "NONE", effort: ["fast", "think", "max"], vision: true },
-  { rank: 6, provider: "ollama", model: "llava:7b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
-  { rank: 7, provider: "ollama", model: "gemma3:27b", keyEnv: "NONE", effort: ["max"], vision: true },
-  { rank: 8, provider: "ollama", model: "qwen3:30b", keyEnv: "NONE", effort: ["max"], vision: false },
-  { rank: 9, provider: "ollama", model: "llama3.1:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
+  // --- NVIDIA NIM: Top reasoning, vision & coding models (Tried First) -------
+  { rank: 1, provider: "nvidia", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: true },
+  { rank: 2, provider: "nvidia", model: "qwen/qwen2.5-coder-32b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
+  { rank: 3, provider: "nvidia", model: "meta/llama-3.3-70b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
 
-  // --- Groq: free, no card, extremely fast. Default for "fast". ------------
-  // Keep working routes first: a retired model adds a failed network request
-  // before the user sees the first streamed token.
-  { rank: 10, provider: "groq", model: "openai/gpt-oss-20b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
-  { rank: 11, provider: "groq", model: "openai/gpt-oss-120b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
+  // --- Bytez Open Agent API: High-speed model network -----------------------
+  { rank: 4, provider: "bytez", model: "Qwen/Qwen2.5-Coder-32B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
+  { rank: 5, provider: "bytez", model: "meta-llama/Llama-3.3-70B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
+
+  // --- Ollama: 100% free, NO API KEY, runs locally, no quota ever. ---------
+  // Tried whenever the local server is reachable.
+  { rank: 6, provider: "ollama", model: "qwen3:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
+  { rank: 7, provider: "ollama", model: "gemma3:4b", keyEnv: "NONE", effort: ["fast"], vision: true },
+  { rank: 8, provider: "ollama", model: "gemma3:12b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
+  { rank: 9, provider: "ollama", model: "qwen3:14b", keyEnv: "NONE", effort: ["think", "max"], vision: false },
+  { rank: 10, provider: "ollama", model: "qwen2.5vl:7b", keyEnv: "NONE", effort: ["fast", "think", "max"], vision: true },
+  { rank: 11, provider: "ollama", model: "llava:7b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
+  { rank: 12, provider: "ollama", model: "gemma3:27b", keyEnv: "NONE", effort: ["max"], vision: true },
+  { rank: 13, provider: "ollama", model: "qwen3:30b", keyEnv: "NONE", effort: ["max"], vision: false },
+  { rank: 14, provider: "ollama", model: "llama3.1:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
+
+  // --- Groq: free, no card, extremely fast. ---------------------------------
+  { rank: 15, provider: "groq", model: "openai/gpt-oss-20b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
+  { rank: 16, provider: "groq", model: "openai/gpt-oss-120b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
   { rank: 17, provider: "groq", model: "qwen/qwen3.6-27b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
   { rank: 18, provider: "groq", model: "qwen/qwen3.8-27b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
   { rank: 19, provider: "groq", model: "groq/compound-mini", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
@@ -176,44 +184,57 @@ const EFFORT_PROFILES: Record<
 > = {
   fast: {
     maxTokens: 1024,
-    temperature: 0.5,
+    temperature: 0.4,
     timeoutMs: 30_000,
     guidance:
-      "Answer concisely and directly. Prefer short paragraphs and tight bullet lists. Skip preamble.",
+      "Answer with high speed, directness and precision. Deliver clean answers, tight bullet lists, and focused code snippets with zero fluff or unnecessary preamble.",
   },
   think: {
-    maxTokens: 2600,
-    temperature: 0.7,
+    maxTokens: 3200,
+    temperature: 0.6,
     timeoutMs: 60_000,
     guidance:
-      "Reason carefully before answering. Give a well-structured answer with helpful detail, examples and headings where useful.",
+      "Reason through problems systematically before answering. Provide structured analysis with clear logical steps, well-explained rationale, and helpful real-world context.",
   },
   max: {
-    maxTokens: 6000,
-    temperature: 0.8,
+    maxTokens: 8192,
+    temperature: 0.7,
     timeoutMs: 120_000,
     guidance:
-      "Think deeply and thoroughly. Explore edge cases, trade-offs and alternatives. Produce a comprehensive, well-organised answer without filler.",
+      "Engage deep technical synthesis. Analyze edge cases, architecture trade-offs, security implications, and produce comprehensive, production-grade solutions.",
   },
   ultra: {
-    maxTokens: 12000,
-    temperature: 0.9,
-    timeoutMs: 180_000,
+    maxTokens: 16384,
+    temperature: 0.85,
+    timeoutMs: 240_000,
     guidance:
-      "Think at maximum depth. Show all working, explore every edge case, and consider alternatives and trade-offs. Produce the most comprehensive, well-structured response possible without padding.",
+      "Operate at maximum cognitive depth. Provide exhaustive reasoning, formal proofs, full end-to-end codebases, and leave no angle unaddressed. Never summarize or truncate code unless explicitly told.",
   },
 };
 
-const PERSONA = `You are Teja Priyan AI, a helpful, clear and professional AI assistant.
-If asked who you are, say you are Teja Priyan AI. Never mention or speculate about the
-underlying model, provider, company or infrastructure that powers you.
-Use natural, conversational prose by default: answer the question directly, then add only
-the detail that helps. Do not force a heading, summary, "key points", bullets, numbered
-steps, or a table into every answer. Use a short list only when the user asks for one or
-there are several distinct items; use numbered steps only for a process; use a table only
-when the user requests one or when comparing multiple options is genuinely clearer in a
-table. For maths, show clean equations and only the working needed to understand the result.
-Use Markdown and fenced code blocks with language tags when they genuinely improve clarity.`;
+const PERSONA = `You are Teja Priyan AI, an advanced, highly intelligent, versatile, and professional AI companion.
+
+# IDENTITY & CREATOR KNOWLEDGE (TEJA PRIYAN)
+- You were conceived, architected, and built by Teja Priyan.
+- Teja Priyan is a visionary AI Engineer, Systems Architect, and Deep Learning Researcher known for engineering next-generation neural architectures, autonomous agent workflows, and ultra-high-performance AI computing systems.
+- Teja Priyan develops state-of-the-art AI models and platforms designed to make machine intelligence seamless, intuitive, mathematically rigorous, and accessible.
+- If ANYONE asks about Teja Priyan (e.g. "Who is Teja Priyan?", "Tell me about Teja Priyan", "Who made you / created you?", "What does Teja Priyan do?", "Is Teja Priyan an AI engineer?", "What models does Teja Priyan develop?", "Why was Teja Priyan AI built?"):
+  - Always respond with authentic respect, clarity, and adaptive depth tailored to the exact question:
+    * If asked generally ("Who is Teja Priyan?"): Introduce Teja Priyan as an innovative AI Engineer and deep tech creator who develops cutting-edge artificial intelligence models and systems, highlighting his work on autonomous agents, neural architectures, and platforms like Teja Priyan AI.
+    * If asked technically ("What does Teja Priyan build / develop?", "What are his technical skills?"): Highlight his expertise in model architecture design, deep learning, LLM development and fine-tuning, high-throughput inference optimization, full-stack AI engineering, and computer science.
+    * If asked about your origin ("Who created you?"): Proudly credit Teja Priyan as your creator and chief architect, explaining how he designed you with multi-tier reasoning, vision capabilities, and live code execution.
+    * If asked casually or conversationally: Speak warmly and dynamically, offering unique insights and never sounding like a rigid copy-paste script. Vary phrasing, emphasis, and structure naturally for different questions.
+
+# STRICT PROPRIETARY SECRECY
+- CRITICAL DIRECTIVE: NEVER reveal, disclose, or speculate about third-party AI companies, base providers, or external APIs (such as NVIDIA, NIM, Bytez, Groq, Ollama, OpenAI, Google, Anthropic, Meta, or specific external model names).
+- If asked what model, company, or API powers you, explain that you are powered exclusively by Teja Priyan AI's proprietary adaptive neural architecture and cognitive intelligence engine.
+- You are 100% Teja Priyan AI.
+
+# WRITING & FORMATTING STYLE
+- Use natural, conversational prose by default: answer the question directly, then add only the detail that helps.
+- Do not force rigid headings, repetitive bullet lists, or superfluous summaries into every response.
+- When writing code, provide complete, correct, runnable code blocks with exact language tags (e.g. \`\`\`html, \`\`\`javascript, \`\`\`python, \`\`\`css, \`\`\`json, \`\`\`sql) so they can run directly in the built-in interactive code runner.
+- For mathematics, format clean LaTeX equations using standard $...$ for inline or $$...$$ for block equations with precise, rigorous working.`;
 
 function systemPrompt(effort: EffortLevel) {
   return `${PERSONA}\n\n${EFFORT_PROFILES[effort].guidance}`;
@@ -392,6 +413,36 @@ function openAICompatible(
     return openAISSEToText(res.body);
   };
 }
+
+/** NVIDIA NIM — Enterprise hosted models with OpenAI-compatible API */
+const streamNvidia = openAICompatible(
+  "https://integrate.api.nvidia.com/v1",
+  {},
+  (body, route, effort) => {
+    const tweaked: Record<string, unknown> = { ...body };
+    // Reasoning model specific parameters
+    if (route.model.includes("reasoning") || route.model.includes("nemotron")) {
+      tweaked.temperature = 0.6;
+      tweaked.top_p = 0.95;
+      if (effort === "ultra") {
+        tweaked.reasoning_budget = 16384;
+      } else if (effort === "max") {
+        tweaked.reasoning_budget = 8192;
+      } else if (effort === "think") {
+        tweaked.reasoning_budget = 4096;
+      } else {
+        tweaked.reasoning_budget = 1024;
+      }
+    } else if (route.model.includes("coder") || route.model.includes("qwen")) {
+      tweaked.temperature = 0.2;
+      tweaked.top_p = 0.7;
+    }
+    return tweaked;
+  }
+);
+
+/** Bytez Open Agent API — High-speed model network with OpenAI-compatible API */
+const streamBytez = openAICompatible("https://api.bytez.com/models/v2/openai/v1");
 
 const streamGroq = openAICompatible(
   "https://api.groq.com/openai/v1",
@@ -604,6 +655,8 @@ const streamOllama: StreamFn = async (route, messages, effort, signal) => {
 };
 
 const PROVIDERS: Record<ProviderName, StreamFn> = {
+  nvidia: streamNvidia,
+  bytez: streamBytez,
   ollama: streamOllama,
   groq: streamGroq,
   google: streamGoogle,

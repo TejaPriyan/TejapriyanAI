@@ -99,14 +99,14 @@ export function ReliabilityChart() {
 
         {/* area fill */}
         <motion.path d={area} fill="url(#areaFill)"
-          initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}}
-          transition={{ duration: 1, delay: 0.5 }} />
+          initial={false} animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }} />
 
         {/* animated line */}
         <motion.path d={line} fill="none" stroke="url(#lineGrad)"
           strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          initial={{ pathLength: 0 }} animate={inView ? { pathLength: 1 } : {}}
-          transition={{ duration: 1.6, ease: EASE }} />
+          initial={false} animate={{ pathLength: 1 }}
+          transition={{ duration: 1.2, ease: EASE }} />
 
         {/* dots + hover */}
         {pts.map((p, i) => (
@@ -114,8 +114,8 @@ export function ReliabilityChart() {
             <circle cx={sx(p.x)} cy={sy(p.y)} r="10" fill="transparent" className="cursor-pointer" />
             <motion.circle cx={sx(p.x)} cy={sy(p.y)} r={hoveredIdx === i ? 6 : 4}
               className="fill-white dark:fill-sand-950" stroke="#f97316" strokeWidth="2.5"
-              initial={{ scale: 0 }} animate={inView ? { scale: 1 } : {}}
-              transition={{ duration: 0.4, delay: 0.7 + i * 0.1, ease: EASE }} />
+              initial={false} animate={{ scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.2 + i * 0.05, ease: EASE }} />
             {hoveredIdx === i && (
               <g>
                 <rect x={sx(p.x) - 56} y={sy(p.y) - 30} width="112" height="22" rx="5"
@@ -170,9 +170,9 @@ export function RoutingDonut() {
                 strokeWidth={hovered === s.label ? 20 : 17}
                 strokeLinecap="butt"
                 strokeDasharray={`${len} ${C - len}`}
-                initial={{ strokeDashoffset: -offset, opacity: 0 }}
-                animate={inView ? { strokeDashoffset: -offset, opacity: 1 } : {}}
-                transition={{ duration: 0.8, delay: 0.15 * i, ease: EASE }}
+                initial={false}
+                animate={{ strokeDashoffset: -offset, opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.1 * i, ease: EASE }}
                 style={{ cursor: "pointer" }}
                 onMouseEnter={() => setHovered(s.label)}
                 onMouseLeave={() => setHovered(null)}
@@ -196,9 +196,9 @@ export function RoutingDonut() {
       <ul className="w-full space-y-3">
         {slices.map((s, i) => (
           <motion.li key={s.label}
-            initial={{ opacity: 0, x: -10 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.3 + i * 0.09 }}
+            initial={false}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 + i * 0.05 }}
             className={`flex items-center gap-3 text-sm transition ${hovered === s.label ? "opacity-100 font-medium" : "opacity-85"}`}
             onMouseEnter={() => setHovered(s.label)}
             onMouseLeave={() => setHovered(null)}

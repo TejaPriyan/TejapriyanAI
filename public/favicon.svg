@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.35" />
+      <stop offset="60%" stop-color="#0369a1" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#030712" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Blue Neon Glow Filter -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur1" />
+      <feGaussianBlur stdDeviation="24" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Soft Ambient Glow -->
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Electric Cyan-Blue Linear Gradient -->
+    <linearGradient id="tpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="25%" stop-color="#38bdf8" />
+      <stop offset="70%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+
+    <!-- Ring Gradient -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient Backdrop -->
+  <rect width="512" height="512" rx="112" fill="#060913" />
+  <circle cx="256" cy="256" r="230" fill="url(#bgGlow)" />
+
+  <!-- Outer Cybernetic Nodes & Orbitals -->
+  <g filter="url(#softGlow)" opacity="0.9">
+    <!-- Outer Ring -->
+    <circle cx="256" cy="256" r="195" fill="none" stroke="url(#ringGrad)" stroke-width="5" stroke-dasharray="16 10 32 8 8 8" />
+    <!-- Secondary Intense Core Ring -->
+    <circle cx="256" cy="256" r="176" fill="none" stroke="#38bdf8" stroke-width="4.5" />
+    
+    <!-- Cyber Ring Nodes -->
+    <circle cx="256" cy="61" r="7" fill="#38bdf8" />
+    <circle cx="256" cy="451" r="7" fill="#38bdf8" />
+    <circle cx="61" cy="256" r="7" fill="#38bdf8" />
+    <circle cx="451" cy="256" r="7" fill="#38bdf8" />
+    <circle cx="118" cy="118" r="5" fill="#0284c7" />
+    <circle cx="394" cy="118" r="5" fill="#0284c7" />
+    <circle cx="118" cy="394" r="5" fill="#0284c7" />
+    <circle cx="394" cy="394" r="5" fill="#0284c7" />
+  </g>
+
+  <!-- Neon "TP" Monogram -->
+  <g filter="url(#neonGlow)">
+    <!-- "T" Letterform -->
+    <path
+      d="M 148 160 L 268 160 L 244 196 L 218 196 L 218 352 L 180 352 L 180 196 L 148 196 Z"
+      fill="url(#tpGradient)"
+    />
+    <!-- "P" Letterform -->
+    <path
+      d="M 236 160 L 312 160 C 352 160 376 182 376 220 C 376 258 350 280 310 280 L 268 280 L 268 352 L 236 352 Z M 268 196 L 268 244 L 308 244 C 330 244 342 234 342 220 C 342 206 330 196 308 196 Z"
+      fill="url(#tpGradient)"
+    />
+    <!-- Futuristic Sharp Accent Slash -->
+    <polygon points="196,160 216,160 200,196 180,196" fill="#ffffff" opacity="0.8" />
+  </g>
+
+  <!-- Center Core Flare Spark -->
+  <circle cx="256" cy="256" r="3" fill="#ffffff" filter="url(#softGlow)" />
+</svg>

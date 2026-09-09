@@ -49,12 +49,14 @@ skips any route whose key is missing and moves down its ranked list.
 | `DATABASE_URL` | SQLite | — | Defaults to `file:./dev.db` |
 | `AUTH_SECRET` | — | `openssl rand -hex 32` | Signs the httpOnly session cookies. **Required in production** — rotating it logs everyone out. |
 | `APP_URL` | — | — | Optional. Public URL, sent as OpenRouter attribution headers. |
-| *(none needed)* | **Ollama** | <https://ollama.com/download> | **Free forever, no key, no quota, offline.** Tried before every cloud provider. Optionally set `OLLAMA_HOST` if not on `127.0.0.1:11434`. |
-| `GROQ_API_KEY` | **Groq** | <https://console.groq.com/keys> | Free, no card. Extremely fast — the default for **Fast**. |
-| `GOOGLE_API_KEY` | **Google Gemini (AI Studio)** | <https://aistudio.google.com/apikey> | Free tier, no card. Whole family is natively multimodal — **all image requests go here first**. |
-| `OPENROUTER_API_KEY` | **OpenRouter** | <https://openrouter.ai/keys> | One key, many `:free` models plus the `openrouter/auto` router. |
-| `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` | **Cloudflare Workers AI** | <https://dash.cloudflare.com/profile/api-tokens> (token needs *Workers AI → Read*) | Separate free daily allowance — a good extra backup. |
-| `HF_TOKEN` | **Hugging Face Inference Providers** | <https://huggingface.co/settings/tokens> | Thinnest free allowance — last resort. |
+| `NVIDIA_API_KEY` | **NVIDIA NIM** | <https://build.nvidia.com/> | Rank 1–3: Nemotron 30B reasoning/vision, Qwen 2.5 Coder 32B, Llama 3.3 70B. |
+| `BYTEZ_API_KEY` | **Bytez Open Agent** | <https://bytez.com/> | Rank 4–5: Qwen 2.5 Coder 32B, Llama 3.3 70B high-availability network. |
+| *(none needed)* | **Ollama** | <https://ollama.com/download> | **Free forever, no key, no quota, offline.** Optionally set `OLLAMA_HOST` if not on `127.0.0.1:11434`. |
+| `GROQ_API_KEY` | **Groq** | <https://console.groq.com/keys> | Free, no card. Extremely fast. |
+| `GOOGLE_API_KEY` | **Google Gemini (AI Studio)** | <https://aistudio.google.com/apikey> | Free tier, no card. Multimodal vision backup. |
+| `OPENROUTER_API_KEY` | **OpenRouter** | <https://openrouter.ai/keys> | One key, many `:free` models. |
+| `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` | **Cloudflare Workers AI** | <https://dash.cloudflare.com/profile/api-tokens> (token needs *Workers AI → Read*) | Extra backup provider. |
+| `HF_TOKEN` | **Hugging Face Inference Providers** | <https://huggingface.co/settings/tokens> | Last resort cloud backup. |
 | `RATE_LIMIT_PER_MINUTE` | — | — | Optional, defaults to `15` requests/user/minute. |
 | `MODEL_ROUTES_JSON` | — | — | Optional. A JSON array that fully replaces the built-in route table. |
 
@@ -149,16 +151,16 @@ This is the heart of the app and the **only** code with provider knowledge.
 * **Total-failure path.** When every route fails, `AllProvidersFailedError` surfaces as a
   calm, on-brand message in the chat bubble — never a stack trace.
 
-### Response depth: Fast / Think / Max
+### Response depth: Fast / Think / Max / Ultra
 
 The user sees **only** the label. Behind it, each level changes:
 
-| Level | System guidance | Max tokens | Temperature | Timeout | Model tier |
+| Level | System guidance | Target tokens | Temperature | Timeout | Model tier |
 |---|---|---|---|---|---|
-| Fast | Concise and direct | 1024 | 0.5 | 30 s | `qwen3:8b`, `gemma3:4b`, Groq `gpt-oss-20b` |
-| Think | Reason carefully, structured detail | 2600 | 0.7 | 60 s | `qwen3:14b`, `gemma3:12b`, 70B cloud |
-| Max | Deep, edge cases, comprehensive | 6000 | 0.8 | 120 s | `qwen3:30b`, `gemma3:27b`, largest cloud |
-| Ultra | Maximum depth, all working shown | 12000 | 0.9 | 180 s | Largest available route |
+| Fast | Concise and direct, zero preamble | 1024 | 0.5 | 30 s | High-speed response routes |
+| Think | Reason carefully, structured detail | 3200 | 0.7 | 60 s | Balanced reasoning routes |
+| Max | Deep, edge cases, comprehensive architecture | 8192 | 0.8 | 120 s | High-capacity reasoning models |
+| Ultra | Maximum cognitive depth, exhaustive reasoning & proofs | Dynamic max | 0.9 | 180 s | Top-tier reasoning engines (Nemotron/Qwen/Llama) |
 
 **No model, provider or company name appears anywhere in the UI**, and the persona is
 instructed never to disclose them.
@@ -185,6 +187,8 @@ the thread; requests are routed to a vision-capable model automatically.
 
 **Polish** — Framer Motion throughout (message fade/slide, spring sidebar, layout-animated
 effort pill, press states), light/dark toggle with no flash, fully responsive.
+
+**Interactive Code & Game Sandbox** — fenced HTML, JavaScript, Canvas, Game, and SVG blocks feature an instant interactive sandbox runner tab, restart button, fullscreen modal with Desktop & Mobile preview toggles, and a one-click direct file downloader.
 
 **Extras** — export a chat to `.txt`, regenerate response, chat search, voice dictation via
 the Web Speech API (Chrome/Edge/Safari).

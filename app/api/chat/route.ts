@@ -217,12 +217,8 @@ export async function POST(req: NextRequest) {
     const firstUser = history.find((m) => m.role === "user");
     if (firstUser) {
       const source = firstUser.content || "Image";
-      titlePromise = Promise.race([
-        generateTitle(source),
-        new Promise<string>((resolve) =>
-          setTimeout(() => resolve(source.replace(/\s+/g, " ").trim().slice(0, 48) || "New chat"), 12_000)
-        ),
-      ]);
+      // Instant title generation — zero network latency, zero API rate limits
+      titlePromise = Promise.resolve(generateTitle(source));
     }
   }
 

@@ -50,77 +50,58 @@ export type ModelRoute = {
 
 const DEFAULT_ROUTES: ModelRoute[] = [
   // =========================================================================
-  // 1. FAST MODE (Rank 1-5): Ultra-low latency, instant direct generation
+  // 1. FAST MODE (Sub-second latency, instant token streaming)
   // =========================================================================
-  { rank: 1, provider: "openrouter", model: "nex-agi/nex-n2.5-mini:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
-  { rank: 2, provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
-  { rank: 3, provider: "openrouter", model: "liquid/lfm-2.5-2.6b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
-  { rank: 4, provider: "openrouter", model: "inclusionai/ling-3.0-flash-vl:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: true },
-  { rank: 5, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: true },
+  { rank: 1, provider: "groq", model: "qwen/qwen3.8-27b", keyEnv: "GROQ_API_KEY", effort: ["fast"], vision: false },
+  { rank: 2, provider: "groq", model: "groq/compound-mini", keyEnv: "GROQ_API_KEY", effort: ["fast"], vision: false },
+  { rank: 3, provider: "openrouter", model: "nex-agi/nex-n2.5-mini:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
+  { rank: 4, provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
+  { rank: 5, provider: "openrouter", model: "inclusionai/ling-3.0-flash-vl:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: true },
+  { rank: 6, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: true },
 
   // =========================================================================
-  // 2. THINK MODE (Rank 10-15): Balanced reasoning, structured explanations
+  // 2. THINK MODE (Balanced reasoning, structured logic, rapid start)
   // =========================================================================
-  { rank: 10, provider: "openrouter", model: "nex-agi/nex-n2.5-pro:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: false },
-  { rank: 11, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
-  { rank: 12, provider: "openrouter", model: "google/gemma-4-26b-a4b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
-  { rank: 13, provider: "openrouter", model: "google/gemma-4-31b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
-  { rank: 14, provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
+  { rank: 10, provider: "groq", model: "qwen/qwen3.8-27b", keyEnv: "GROQ_API_KEY", effort: ["think"], vision: false },
+  { rank: 11, provider: "groq", model: "groq/compound", keyEnv: "GROQ_API_KEY", effort: ["think"], vision: false },
+  { rank: 12, provider: "openrouter", model: "nex-agi/nex-n2.5-pro:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: false },
+  { rank: 13, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
+  { rank: 14, provider: "openrouter", model: "google/gemma-4-26b-a4b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
+  { rank: 15, provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
 
   // =========================================================================
-  // 3. MAX MODE (Rank 20-25): Deep technical synthesis, complex coding
+  // 3. MAX MODE (Deep synthesis, massive models, ultra-fast LPU inference)
   // =========================================================================
-  { rank: 20, provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: false },
-  { rank: 21, provider: "openrouter", model: "cohere/north-mini-code:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: false },
-  { rank: 22, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: true },
-  { rank: 23, provider: "openrouter", model: "google/gemma-4-31b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: true },
+  { rank: 20, provider: "groq", model: "openai/gpt-oss-120b", keyEnv: "GROQ_API_KEY", effort: ["max"], vision: false },
+  { rank: 21, provider: "groq", model: "qwen/qwen3.8-27b", keyEnv: "GROQ_API_KEY", effort: ["max"], vision: false },
+  { rank: 22, provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: false },
+  { rank: 23, provider: "openrouter", model: "cohere/north-mini-code:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: false },
+  { rank: 24, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: true },
 
   // =========================================================================
-  // 4. ULTRA MODE (Rank 30-35): Maximum cognitive depth, exhaustive proofs & code
+  // 4. ULTRA MODE (Maximum cognitive depth, 120B parameter architectures)
   // =========================================================================
-  { rank: 30, provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: false },
-  { rank: 31, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: true },
-  { rank: 32, provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: false },
+  { rank: 30, provider: "groq", model: "openai/gpt-oss-120b", keyEnv: "GROQ_API_KEY", effort: ["ultra"], vision: false },
+  { rank: 31, provider: "groq", model: "groq/compound", keyEnv: "GROQ_API_KEY", effort: ["ultra"], vision: false },
+  { rank: 32, provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: false },
+  { rank: 33, provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: false },
+  { rank: 34, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: true },
 
   // =========================================================================
   // 5. SECONDARY PROVIDERS & FALLBACKS (Rank 40+)
   // =========================================================================
-  // --- NVIDIA NIM: Top reasoning, vision & coding models ---------------------
   { rank: 40, provider: "nvidia", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: true },
   { rank: 41, provider: "nvidia", model: "qwen/qwen2.5-coder-32b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["think", "max", "ultra"], vision: false },
   { rank: 42, provider: "nvidia", model: "meta/llama-3.3-70b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["think", "max", "ultra"], vision: false },
-
-  // --- Bytez Open Agent API: High-speed model network -----------------------
   { rank: 43, provider: "bytez", model: "Qwen/Qwen2.5-Coder-32B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["think", "max", "ultra"], vision: false },
   { rank: 44, provider: "bytez", model: "meta-llama/Llama-3.3-70B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["think", "max", "ultra"], vision: false },
-
-  // --- Groq: free, no card, extremely fast. ---------------------------------
-  { rank: 45, provider: "groq", model: "openai/gpt-oss-20b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
-  { rank: 46, provider: "groq", model: "openai/gpt-oss-120b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
-  { rank: 47, provider: "groq", model: "qwen/qwen3.6-27b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
-  { rank: 48, provider: "groq", model: "qwen/qwen3.8-27b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
-  { rank: 49, provider: "groq", model: "groq/compound-mini", keyEnv: "GROQ_API_KEY", effort: ["fast"], vision: false },
-
-  // --- Google Gemini (AI Studio free tier): native vision across the family -
   { rank: 50, provider: "google", model: "gemini-2.0-flash", keyEnv: "GOOGLE_API_KEY", effort: ["fast", "think"], vision: true },
   { rank: 51, provider: "google", model: "gemini-2.5-flash", keyEnv: "GOOGLE_API_KEY", effort: ["think", "max"], vision: true },
   { rank: 52, provider: "google", model: "gemini-2.5-pro", keyEnv: "GOOGLE_API_KEY", effort: ["max", "ultra"], vision: true },
-
-  // --- Ollama: 100% free, NO API KEY, runs locally, no quota ever. ---------
   { rank: 60, provider: "ollama", model: "qwen3:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
   { rank: 61, provider: "ollama", model: "gemma3:4b", keyEnv: "NONE", effort: ["fast"], vision: true },
   { rank: 62, provider: "ollama", model: "gemma3:12b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
-  { rank: 63, provider: "ollama", model: "qwen3:14b", keyEnv: "NONE", effort: ["think", "max"], vision: false },
-  { rank: 64, provider: "ollama", model: "qwen2.5vl:7b", keyEnv: "NONE", effort: ["fast", "think", "max"], vision: true },
-  { rank: 65, provider: "ollama", model: "llava:7b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
-  { rank: 66, provider: "ollama", model: "gemma3:27b", keyEnv: "NONE", effort: ["max", "ultra"], vision: true },
-  { rank: 67, provider: "ollama", model: "qwen3:30b", keyEnv: "NONE", effort: ["max", "ultra"], vision: false },
-  { rank: 68, provider: "ollama", model: "llama3.1:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
-
-  // --- Cloudflare Workers AI: separate free daily allowance -----------------
   { rank: 70, provider: "cloudflare", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", keyEnv: "CLOUDFLARE_API_TOKEN", effort: ["fast", "think", "max"], vision: false },
-
-  // --- Hugging Face Inference Providers: thin free allowance, last resort ---
   { rank: 80, provider: "huggingface", model: "meta-llama/Llama-3.1-8B-Instruct", keyEnv: "HF_TOKEN", effort: ["fast", "think", "max"], vision: false }
 ];
 
@@ -199,28 +180,28 @@ const EFFORT_PROFILES: Record<
   fast: {
     maxTokens: 1024,
     temperature: 0.3,
-    timeoutMs: 25_000,
+    timeoutMs: 10_000,
     guidance:
       "ACTIVE COGNITIVE MODE: FAST.\n- Absolute Priority: Ultra-low latency, immediate answers, zero unnecessary thinking.\n- Style: Crisp, direct, 1 to 3 short paragraphs. No meta-reasoning, no chain-of-thought, no long preambles, and no fluff.\n- Simple questions get immediate short answers. Never make answers unnecessarily long.\n- When code is requested, provide only the focused, working snippet.",
   },
   think: {
     maxTokens: 3200,
     temperature: 0.6,
-    timeoutMs: 60_000,
+    timeoutMs: 15_000,
     guidance:
       "ACTIVE COGNITIVE MODE: THINK.\n- Absolute Priority: Balanced reasoning, clear structured explanations, accurate answers, moderate response time.\n- Style: Clear Markdown headings, logical step-by-step points, helpful real-world context, well-explained rationale without bloat.\n- Numbered steps for how-tos, tables for comparisons.",
   },
   max: {
     maxTokens: 8192,
     temperature: 0.7,
-    timeoutMs: 120_000,
+    timeoutMs: 25_000,
     guidance:
       "ACTIVE COGNITIVE MODE: MAX.\n- Absolute Priority: Deep reasoning, complex coding, difficult questions, detailed analysis, and production-grade architectures.\n- Style: Thorough, rigorous, analyze edge cases, performance trade-offs, and security implications.\n- Complete, production-grade code with error handling, type definitions, and multi-file structures.",
   },
   ultra: {
     maxTokens: 16384,
     temperature: 0.75,
-    timeoutMs: 25_000,
+    timeoutMs: 30_000,
     guidance:
       "ACTIVE COGNITIVE MODE: ULTRA.\n- Absolute Priority: Maximum cognitive depth, mathematical proofs, complex systems architecture, exhaustive analytical rigor.\n- Style: Highest-quality reasoning, mathematical precision, deep algorithmic derivations.\n- Provide complete end-to-end architectures and codebases with zero omission or premature truncation.",
   },
@@ -805,6 +786,8 @@ export async function streamChatCompletion(
     // not cost a failed round-trip (and its full TTFT timeout) on every message.
     const routeKey = `${route.provider}/${route.model}`;
     if (Date.now() < (deadUntil.get(routeKey) ?? 0)) continue;
+    const providerKey = `provider:${route.provider}`;
+    if (Date.now() < (deadUntil.get(providerKey) ?? 0)) continue;
 
     const controller = new AbortController();
 
@@ -841,7 +824,8 @@ export async function streamChatCompletion(
       resetIdle();
 
       console.log(`[modelRouter] served by ${route.provider}/${route.model} (${effort})`);
-      deadUntil.delete(routeKey); // healthy again — reset the breaker
+      deadUntil.delete(routeKey);
+      deadUntil.delete(providerKey); // healthy again — reset the breaker
 
       // Re-join the first chunk with the rest, then filter out reasoning blocks.
       const rejoined = (async function* () {
@@ -874,9 +858,19 @@ export async function streamChatCompletion(
       // comes back empty stops being retried on every message but self-heals
       // quickly if it was a one-off.
       const msg = String(err?.message ?? "");
-      if (/→ (401|403|404)\b/.test(msg)) {
+      if (/429|Rate limit|rate_limit|quota/i.test(msg)) {
+        // When a provider hits rate-limits or daily free quotas, cool down the whole provider
+        // so we do not waste 20+ seconds trying other failing routes on the same key!
+        deadUntil.set(providerKey, Date.now() + 3 * 60_000);
+        deadUntil.set(routeKey, Date.now() + 3 * 60_000);
+        console.warn(`[modelRouter] ${route.provider} rate limit (429) hit — skipping provider for 3 min`);
+      } else if (/→ (401|403)\b/.test(msg)) {
+        deadUntil.set(providerKey, Date.now() + 10 * 60_000);
+        deadUntil.set(routeKey, Date.now() + 10 * 60_000);
+        console.warn(`[modelRouter] ${route.provider} auth failed — skipping provider for 10 min`);
+      } else if (/→ 404\b/.test(msg)) {
         deadUntil.set(routeKey, Date.now() + DEAD_ROUTE_COOLDOWN_MS);
-        console.warn(`[modelRouter] ${routeKey} hard-failed — skipping for 10 min`);
+        console.warn(`[modelRouter] ${routeKey} 404 not found — skipping for 10 min`);
       } else if (/empty stream/.test(msg)) {
         deadUntil.set(routeKey, Date.now() + 60_000);
         console.warn(`[modelRouter] ${routeKey} returned an empty stream — skipping for 60 s`);
@@ -888,25 +882,9 @@ export async function streamChatCompletion(
 }
 
 /** Cheap non-streaming call used to auto-title chats. Falls back to a heuristic. */
-export async function generateTitle(firstMessage: string): Promise<string> {
-  const fallback =
-    firstMessage.replace(/\s+/g, " ").trim().slice(0, 48) ||
-    "New chat";
-  try {
-    const stream = await streamChatCompletion(
-      [
-        {
-          role: "user",
-          content: `Write a 3-5 word title for a conversation that starts with this message. Reply with the title only, no quotes:\n\n"${firstMessage.slice(0, 500)}"`,
-        },
-      ],
-      "fast"
-    );
-    let out = "";
-    for await (const c of stream) out += c;
-    const cleaned = out.replace(/["\n]/g, " ").replace(/\s+/g, " ").trim();
-    return cleaned ? cleaned.slice(0, 60) : fallback;
-  } catch {
-    return fallback;
-  }
+export function generateTitle(firstMessage: string): string {
+  const cleaned = firstMessage.replace(/["\n\r\t]/g, " ").replace(/\s+/g, " ").trim();
+  if (!cleaned) return "New chat";
+  const words = cleaned.split(" ").slice(0, 7).join(" ");
+  return words.slice(0, 45).trim() || "New chat";
 }

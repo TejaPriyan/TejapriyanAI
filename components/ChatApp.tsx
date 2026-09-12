@@ -31,18 +31,11 @@ const MessageBubble = dynamic(
   { ssr: false }
 );
 
-const LS_USER   = "tp_user";
-const LS_EFFORT = "tp_effort";
-const LS_PINS   = "tp_pins";
-
-const SUGGESTIONS = [
-  { title: "Explain a concept",   body: "Explain how HTTPS works, like I'm a junior developer." },
-  { title: "Write some code",     body: "Write a TypeScript debounce hook with tests." },
-  { title: "Plan something",      body: "Plan a 5-day trip to Hyderabad on a mid-range budget." },
-  { title: "Compare options",     body: "What should I consider when choosing SQLite or PostgreSQL for a small SaaS?" },
-  { title: "Solve a problem",     body: "Help me debug why my React useEffect runs twice in development." },
-  { title: "Learn something new", body: "Explain the difference between TCP and UDP with a real-world analogy." },
-];
+const LS_USER          = "tp_user";
+const LS_EFFORT        = "tp_effort";
+const LS_PINS          = "tp_pins";
+const LS_CONVERSATIONS = "tp_user_conversations_v1";
+const MAX_OFFLINE_HOURS = 12;
 
 export default function ChatApp() {
   const { theme, toggle } = useTheme();
@@ -60,6 +53,7 @@ export default function ChatApp() {
   const [query,        setQuery]        = useState("");
   const [pinnedIds,    setPinnedIds]    = useState<Set<string>>(new Set());
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [editingName,    setEditingName]    = useState(false);
 
   const abortRef     = useRef<AbortController | null>(null);
   const scrollRef    = useRef<HTMLDivElement>(null);
@@ -95,6 +89,32 @@ export default function ChatApp() {
       if (pins) setPinnedIds(new Set(JSON.parse(pins)));
     } catch {}
     setSidebarOpen(window.innerWidth >= 1024);
+
+    // Restore saved conversations or prune if user was offline for hours
+    try {
+      const rawConv = localStorage.getItem(LS_CONVERSATIONS);
+      if (rawConv) {
+        const parsedConv = JSON.parse(rawConv);
+        const lastActive = Number(parsedConv.lastActive) || 0;
+        const hoursOffline = (Date.now() - lastActive) / (1000 * 60 * 60);
+        if (hoursOffline > MAX_OFFLINE_HOURS) {
+          // Remove conversation cache after hours of inactivity
+          localStorage.removeItem(LS_CONVERSATIONS);
+        } else {
+          if (Array.isArray(parsedConv.chats) && parsedConv.chats.length > 0) {
+            setChats(parsedConv.chats);
+            setChatsLoading(false);
+          }
+          if (parsedConv.messagesByChat && typeof parsedConv.messagesByChat === "object") {
+            for (const [cId, msgs] of Object.entries(parsedConv.messagesByChat)) {
+              if (Array.isArray(msgs)) {
+                chatCacheRef.current.set(cId, msgs as UiMessage[]);
+              }
+            }
+          }
+        }
+      }
+    } catch {}
 
     if (stored) {
       setUser(stored);
@@ -155,6 +175,48 @@ export default function ChatApp() {
     if (activeId) chatCacheRef.current.set(activeId, messages);
     setExportMenuOpen(false);
   }, [activeId, messages]);
+
+  // Persist conversation cache to localStorage while active; automatically expires after hours offline
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const cacheObj: Record<string, UiMessage[]> = {};
+      chatCacheRef.current.forEach((val, key) => {
+        cacheObj[key] = val;
+      });
+      if (activeId && messages.length > 0) {
+        cacheObj[activeId] = messages;
+      }
+      localStorage.setItem(
+        LS_CONVERSATIONS,
+        JSON.stringify({
+          lastActive: Date.now(),
+          chats,
+          messagesByChat: cacheObj,
+        })
+      );
+    } catch {}
+  }, [user, chats, activeId, messages]);
+
+  // Maintain active heartbeat timestamp while user interacts
+  useEffect(() => {
+    const touchActive = () => {
+      try {
+        const raw = localStorage.getItem(LS_CONVERSATIONS);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.lastActive = Date.now();
+          localStorage.setItem(LS_CONVERSATIONS, JSON.stringify(parsed));
+        }
+      } catch {}
+    };
+    window.addEventListener("beforeunload", touchActive);
+    window.addEventListener("pointerdown", touchActive, { passive: true });
+    return () => {
+      window.removeEventListener("beforeunload", touchActive);
+      window.removeEventListener("pointerdown", touchActive);
+    };
+  }, []);
 
   // Click outside to close export menu
   useEffect(() => {
@@ -418,16 +480,40 @@ export default function ChatApp() {
 
   const send = useCallback(
     (text: string, image: string | null) => {
+      // Collect continuous prior turns for uninterrupted multi-turn conversational memory
+      const priorTurns = messages
+        .filter((m) => !m.error && m.content)
+        .slice(-20)
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+          imageData: m.imageData ?? null,
+        }));
+      priorTurns.push({ role: "user", content: text, imageData: image ?? null });
+
       setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", content: text, imageData: image }]);
-      runStream({ chatId: activeId, message: text, image });
+      runStream({ chatId: activeId, message: text, image, history: priorTurns });
     },
-    [activeId, runStream]
+    [activeId, messages, runStream]
   );
 
   const regenerate = useCallback(() => {
+    const priorTurns = (
+      messages[messages.length - 1]?.role === "assistant"
+        ? messages.slice(0, -1)
+        : messages
+    )
+      .filter((m) => !m.error && m.content)
+      .slice(-20)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+        imageData: m.imageData ?? null,
+      }));
+
     setMessages((m) => (m[m.length - 1]?.role === "assistant" ? m.slice(0, -1) : m));
-    runStream({ chatId: activeId, regenerate: true });
-  }, [activeId, runStream]);
+    runStream({ chatId: activeId, regenerate: true, history: priorTurns });
+  }, [activeId, messages, runStream]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -439,7 +525,16 @@ export default function ChatApp() {
 
   return (
     <div className="flex h-[100dvh] overflow-hidden">
-      <NameModal open={!user} onSubmit={registerName} />
+      <NameModal
+        open={!user || editingName}
+        initialName={user?.name ?? ""}
+        isEditing={Boolean(user && editingName)}
+        onClose={() => setEditingName(false)}
+        onSubmit={async (newName: string) => {
+          await registerName(newName);
+          setEditingName(false);
+        }}
+      />
 
       <Sidebar
         chats={chats}
@@ -456,6 +551,7 @@ export default function ChatApp() {
         onDelete={deleteChat}
         onPin={pinChat}
         pinnedIds={pinnedIds}
+        onEditName={() => setEditingName(true)}
       />
 
       <main className="chat-surface relative flex min-w-0 flex-1 flex-col">
@@ -564,7 +660,7 @@ export default function ChatApp() {
             {threadLoading ? (
               <ThreadSkeleton />
             ) : messages.length === 0 ? (
-              <EmptyState name={user?.name ?? ""} onPick={(t) => send(t, null)} />
+              <EmptyState name={user?.name ?? ""} />
             ) : (
               <AnimatePresence initial={false}>
                 {messages.map((m, i) => (
@@ -606,16 +702,15 @@ function BootScreen() {
       <motion.div
         animate={{ scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }}
         transition={{ duration: 1.5, repeat: Infinity }}
-        className="h-14 w-14 min-w-[56px] max-w-[56px] min-h-[56px] max-h-[56px] shrink-0 flex items-center justify-center"
+        className="flex h-16 w-16 min-w-[64px] max-w-[64px] min-h-[64px] max-h-[64px] shrink-0 items-center justify-center rounded-2xl bg-sand-100 p-2 shadow-inner dark:bg-sand-800"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/tp-logo.png"
+          src="/favicon.svg"
           alt="Teja Priyan AI"
           width={56}
           height={56}
           className="h-full w-full object-contain filter drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]"
-          style={{ width: 56, height: 56, maxWidth: 56, maxHeight: 56 }}
         />
       </motion.div>
     </div>
@@ -638,29 +733,28 @@ function ThreadSkeleton() {
   );
 }
 
-function EmptyState({ name, onPick }: { name: string; onPick: (t: string) => void }) {
+function EmptyState({ name }: { name: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col items-center justify-center py-8 text-center sm:py-14"
+      className="flex flex-col items-center justify-center py-10 text-center sm:py-20"
     >
-      {/* Animated Glowing TP Emblem */}
+      {/* Animated Glowing TP Favicon Emblem */}
       <motion.div
-        animate={{ y: [0, -8, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-        className="relative group mb-2"
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="relative group mb-3"
       >
-        <div className="absolute -inset-4 rounded-full bg-cyan-500/25 blur-2xl opacity-75 group-hover:opacity-100 transition duration-500" />
-        <div className="relative h-24 w-24 sm:h-28 sm:w-28 min-w-[96px] max-w-[112px] min-h-[96px] max-h-[112px] shrink-0 flex items-center justify-center">
+        <div className="absolute -inset-3 rounded-full bg-cyan-500/25 blur-2xl opacity-70 group-hover:opacity-100 transition duration-500" />
+        <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 min-w-[80px] max-w-[96px] min-h-[80px] max-h-[96px] shrink-0 items-center justify-center rounded-3xl bg-sand-100/90 p-3 shadow-lg ring-1 ring-sand-200 backdrop-blur-md dark:bg-sand-800/80 dark:ring-sand-700">
           <img
-            src="/images/tp-logo.png"
+            src="/favicon.svg"
             alt="Teja Priyan AI Emblem"
-            width={112}
-            height={112}
-            className="h-full w-full object-contain filter drop-shadow-[0_8px_28px_rgba(56,189,248,0.4)]"
-            style={{ width: "100%", height: "100%", maxWidth: 112, maxHeight: 112 }}
+            width={96}
+            height={96}
+            className="h-full w-full object-contain filter drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]"
           />
         </div>
       </motion.div>
@@ -669,23 +763,31 @@ function EmptyState({ name, onPick }: { name: string; onPick: (t: string) => voi
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="display mt-6 text-[2.6rem] font-normal leading-[1.05] text-sand-950 dark:text-white sm:text-[3.2rem]"
+        className="display mt-4 text-[2.2rem] font-normal leading-[1.1] text-sand-950 dark:text-white sm:text-[2.8rem]"
       >
-        {name
-          ? <>Hi, <span className="italic bg-gradient-to-r from-clay-500 to-amber-500 bg-clip-text text-transparent">{name}</span></>
-          : "Hi there"}
+        {name ? (
+          <>
+            How can I help you today,{" "}
+            <span className="italic bg-gradient-to-r from-clay-500 to-amber-500 bg-clip-text text-transparent">
+              {name}
+            </span>
+            ?
+          </>
+        ) : (
+          "Where should we begin?"
+        )}
       </motion.h1>
 
       <motion.p
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.16 }}
-        className="mt-3 max-w-md text-[15px] text-sand-600 dark:text-sand-300 font-normal leading-relaxed"
+        className="mt-2.5 max-w-md text-[14px] sm:text-[15px] text-sand-600 dark:text-sand-300 font-normal leading-relaxed"
       >
-        Your intelligent workspace for deep thinking, analysis, and creative problem solving.
+        Your intelligent workspace for deep thinking, analysis, and creative problem solving with continuous memory.
       </motion.p>
 
-      {/* Keyboard shortcut reminder */}
+      {/* Keyboard shortcut hint */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -697,27 +799,6 @@ function EmptyState({ name, onPick }: { name: string; onPick: (t: string) => voi
         <kbd className="rounded border border-sand-200 px-1 font-mono dark:border-sand-700">Esc</kbd>
         {" "}stop generation
       </motion.p>
-
-      {/* Suggestion cards */}
-      <div className="mt-8 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
-        {SUGGESTIONS.map((s, i) => (
-          <motion.button
-            key={s.title}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 * i + 0.3, type: "spring", stiffness: 340, damping: 28 }}
-            whileHover={{ y: -3, scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onPick(s.body)}
-            className="rounded-xl border border-sand-200 bg-white/80 p-4 text-left shadow-sm backdrop-blur transition hover:border-clay-400 hover:shadow-md dark:border-sand-700 dark:bg-sand-900/80 dark:hover:border-clay-500"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <IconPlus className="h-3.5 w-3.5 text-clay-500" /> {s.title}
-            </div>
-            <div className="mt-1 text-xs text-sand-500 dark:text-sand-400">{s.body}</div>
-          </motion.button>
-        ))}
-      </div>
     </motion.div>
   );
 }

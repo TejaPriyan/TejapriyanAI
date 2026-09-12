@@ -26,6 +26,7 @@ type Props = {
   onDelete: (id: string) => void;
   onPin: (id: string, pinned: boolean) => void;
   pinnedIds: Set<string>;
+  onEditName?: () => void;
 };
 
 function ChatRow({
@@ -148,23 +149,27 @@ export function Sidebar(p: Props) {
   const body = (
     <div className="relative flex h-full w-[280px] flex-col border-r border-sand-200 bg-sand-100/70 backdrop-blur-xl dark:border-sand-800 dark:bg-sand-900/50">
       {/* Brand */}
-      <div className="flex items-center gap-2 px-4 py-4">
-        <div className="flex h-8 w-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] shrink-0 items-center justify-center">
+      <div className="flex items-center gap-2.5 px-4 py-4">
+        <div className="flex h-8 w-8 min-w-[32px] max-w-[32px] min-h-[32px] max-h-[32px] shrink-0 items-center justify-center rounded-lg bg-sand-200/60 p-1 dark:bg-sand-800/60">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/tp-logo.png"
+            src="/favicon.svg"
             alt="Teja Priyan AI"
-            width={32}
-            height={32}
-            className="h-full w-full object-contain filter drop-shadow-[0_2px_8px_rgba(56,189,248,0.3)]"
-            style={{ width: 32, height: 32, maxWidth: 32, maxHeight: 32 }}
+            width={28}
+            height={28}
+            className="h-full w-full object-contain filter drop-shadow-[0_2px_6px_rgba(56,189,248,0.3)]"
           />
         </div>
-        <div className="flex-1 leading-tight">
+        <div className="min-w-0 flex-1 leading-tight">
           <div className="font-display text-[17px] leading-tight">Teja Priyan AI</div>
-          <div className="truncate text-[11px] text-sand-500 dark:text-sand-400">
-            {p.userName || "Guest"}
-          </div>
+          <button
+            onClick={p.onEditName}
+            className="group/name flex items-center gap-1 truncate text-[11px] text-sand-500 hover:text-clay-600 dark:text-sand-400 dark:hover:text-clay-400 transition"
+            title="Click to change your name"
+          >
+            <span className="truncate">{p.userName || "Guest"}</span>
+            <IconPencil className="h-2.5 w-2.5 opacity-60 group-hover/name:opacity-100" />
+          </button>
         </div>
         <button
           onClick={p.onClose}
@@ -266,6 +271,34 @@ export function Sidebar(p: Props) {
             )}
           </>
         )}
+      </div>
+
+      {/* User profile & Change name */}
+      <div className="border-t border-sand-200/80 p-2.5 dark:border-sand-800/80">
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-sand-200 bg-white/70 p-2 shadow-sm backdrop-blur-md dark:border-sand-700/60 dark:bg-sand-800/60">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-clay-600 font-semibold text-white text-xs uppercase shadow-sm">
+              {(p.userName || "U").slice(0, 2)}
+            </div>
+            <div className="min-w-0 truncate">
+              <div className="truncate text-xs font-semibold text-sand-900 dark:text-sand-100">
+                {p.userName || "User"}
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Online
+              </div>
+            </div>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={p.onEditName}
+            className="shrink-0 rounded-lg border border-sand-200 bg-sand-100 px-2.5 py-1 text-[11px] font-medium text-sand-700 shadow-sm transition hover:bg-clay-600 hover:text-white dark:border-sand-700 dark:bg-sand-700/60 dark:text-sand-200 dark:hover:bg-clay-600 dark:hover:text-white"
+            title="Change your name anytime"
+          >
+            Change Name
+          </motion.button>
+        </div>
       </div>
 
       <div className="border-t border-sand-200 px-4 py-3 text-[11px] text-sand-400 dark:border-sand-800">

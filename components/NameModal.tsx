@@ -1,11 +1,28 @@
 "use client";
-/** First-visit onboarding: asks only for a name. No password, no email. */
-import { useState } from "react";
+/** Onboarding & name edit modal: asks only for a name. No password, no email. */
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { IconClose } from "./Icons";
 
-export function NameModal({ open, onSubmit }: { open: boolean; onSubmit: (name: string) => void }) {
-  const [name, setName] = useState("");
+export function NameModal({
+  open,
+  onSubmit,
+  initialName = "",
+  isEditing = false,
+  onClose,
+}: {
+  open: boolean;
+  onSubmit: (name: string) => void | Promise<void>;
+  initialName?: string;
+  isEditing?: boolean;
+  onClose?: () => void;
+}) {
+  const [name, setName] = useState(initialName);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) setName(initialName);
+  }, [open, initialName]);
 
   const go = async () => {
     const n = name.trim();
@@ -32,29 +49,44 @@ export function NameModal({ open, onSubmit }: { open: boolean; onSubmit: (name: 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 300, damping: 26 }}
-            className="w-full max-w-md rounded-2xl border border-sand-200 bg-white p-7 shadow-2xl dark:border-sand-700 dark:bg-sand-900"
+            className="relative w-full max-w-md rounded-2xl border border-sand-200 bg-white p-7 shadow-2xl dark:border-sand-700 dark:bg-sand-900"
           >
+            {isEditing && onClose && (
+              <button
+                onClick={onClose}
+                className="absolute right-4 top-4 rounded-lg p-1.5 text-sand-400 hover:bg-sand-100 dark:hover:bg-sand-800 transition"
+                aria-label="Close modal"
+              >
+                <IconClose className="h-4 w-4" />
+              </button>
+            )}
+
             <motion.div
               initial={{ rotate: -12, scale: 0.8 }} animate={{ rotate: 0, scale: 1 }}
               transition={{ delay: 0.08, type: "spring", stiffness: 260 }}
-              className="mx-auto flex h-16 w-16 min-w-[64px] max-w-[64px] min-h-[64px] max-h-[64px] shrink-0 items-center justify-center"
+              className="mx-auto flex h-16 w-16 min-w-[64px] max-w-[64px] min-h-[64px] max-h-[64px] shrink-0 items-center justify-center rounded-2xl bg-sand-100 p-2 shadow-inner dark:bg-sand-800"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/tp-logo.png"
+                src="/favicon.svg"
                 alt="Teja Priyan AI"
-                width={64}
-                height={64}
+                width={56}
+                height={56}
                 className="h-full w-full object-contain filter drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]"
-                style={{ width: 64, height: 64, maxWidth: 64, maxHeight: 64 }}
               />
             </motion.div>
 
-            <h1 className="display mt-6 text-center text-[2rem] leading-tight">
-              Welcome to <span className="italic text-clay-600 dark:text-clay-400">Teja Priyan AI</span>
+            <h1 className="display mt-6 text-center text-[1.9rem] leading-tight">
+              {isEditing ? (
+                <>Update your <span className="italic text-clay-600 dark:text-clay-400">Name</span></>
+              ) : (
+                <>Welcome to <span className="italic text-clay-600 dark:text-clay-400">Teja Priyan AI</span></>
+              )}
             </h1>
             <p className="mt-2 text-center text-sm text-sand-500 dark:text-sand-400">
-              What should I call you? No password, no email — just a name.
+              {isEditing
+                ? "Choose how you would like Teja Priyan AI to address you."
+                : "What should I call you? No password, no email — just a name."}
             </p>
 
             <input
@@ -73,11 +105,11 @@ export function NameModal({ open, onSubmit }: { open: boolean; onSubmit: (name: 
               disabled={!name.trim() || busy}
               className="mt-4 w-full rounded-xl bg-clay-600 py-3 text-sm font-semibold text-white shadow-lg shadow-clay-600/25 transition hover:bg-clay-700 disabled:cursor-not-allowed disabled:bg-sand-300 disabled:shadow-none dark:disabled:bg-sand-700"
             >
-              {busy ? "Setting up…" : "Start chatting"}
+              {busy ? "Saving…" : isEditing ? "Save name" : "Start chatting"}
             </motion.button>
 
             <p className="mt-4 text-center text-[11px] text-sand-400">
-              Your name and chats stay on this device and its local database.
+              Your name and conversations stay private on your device.
             </p>
           </motion.div>
         </motion.div>

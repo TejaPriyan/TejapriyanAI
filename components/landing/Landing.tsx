@@ -179,7 +179,7 @@ export default function Landing() {
           <Link href="/" className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] shrink-0 items-center justify-center">
               <img
-                src="/images/tp-logo.png"
+                src="/favicon.svg"
                 alt="Teja Priyan AI Logo"
                 width={36}
                 height={36}

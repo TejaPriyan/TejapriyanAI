@@ -147,7 +147,7 @@ export function Composer({
   const isUltra = effort === "ultra";
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-3 pb-4 pt-2 sm:px-4">
+    <div className="mx-auto w-full max-w-3xl px-2 pb-2 pt-1 sm:px-4 sm:pb-4 sm:pt-2">
       <AnimatePresence>
         {notice && (
           <motion.div
@@ -220,16 +220,16 @@ export function Composer({
           )}
         </AnimatePresence>
 
-        <div className="flex items-end gap-2 p-2.5">
+        <div className="flex items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2.5">
           <input
             ref={fileRef} type="file" accept="image/*" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); e.target.value = ""; }}
           />
           <IconBtn label="Attach image" onClick={() => fileRef.current?.click()}>
-            <IconImage className="h-5 w-5" />
+            <IconImage className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           </IconBtn>
           <IconBtn label="Voice input" onClick={toggleVoice} active={listening}>
-            <IconMic className="h-5 w-5" />
+            <IconMic className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           </IconBtn>
 
           <textarea
@@ -250,7 +250,7 @@ export function Composer({
                 ? "Drop your image here…"
                 : "Message Teja Priyan AI…"
             }
-            className="scroll-thin max-h-[220px] flex-1 resize-none bg-transparent py-2 text-[15px] leading-6 outline-none placeholder:text-sand-400"
+            className="scroll-thin max-h-[130px] sm:max-h-[220px] flex-1 resize-none bg-transparent py-1.5 sm:py-2 text-[16px] sm:text-[15px] leading-snug sm:leading-6 outline-none placeholder:text-sand-400"
           />
 
           <motion.button
@@ -258,23 +258,23 @@ export function Composer({
             onClick={streaming ? onStop : submit}
             disabled={!streaming && !text.trim() && !image}
             aria-label={streaming ? "Stop generating" : "Send message"}
-            className={`mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow transition disabled:cursor-not-allowed disabled:bg-sand-300 dark:disabled:bg-sand-700
+            className={`mb-0.5 flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl text-white shadow transition disabled:cursor-not-allowed disabled:bg-sand-300 dark:disabled:bg-sand-700
               ${isUltra ? "bg-clay-500 hover:bg-clay-600" : "bg-clay-500 hover:bg-clay-600"}`}
           >
-            {streaming ? <IconStop className="h-4 w-4" /> : <IconSend className="h-4.5 w-4.5" />}
+            {streaming ? <IconStop className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <IconSend className="h-4 w-4 sm:h-4.5 sm:w-4.5" />}
           </motion.button>
         </div>
 
         {/* Effort selector */}
-        <div className="flex items-center gap-2 border-t border-sand-100 px-3 py-2 dark:border-sand-800">
-          <span className="text-[11px] font-medium text-sand-400">Depth</span>
+        <div className="flex items-center gap-1.5 sm:gap-2 border-t border-sand-100 px-2 py-1 sm:px-3 sm:py-2 dark:border-sand-800">
+          <span className="text-[10px] sm:text-[11px] font-medium text-sand-400">Depth</span>
           <div className="relative flex rounded-lg bg-sand-100 p-0.5 dark:bg-sand-800">
             {EFFORTS.map((e) => (
               <button
                 key={e.id}
                 onClick={() => onEffort(e.id)}
                 title={e.hint}
-                className={`relative rounded-md px-3 py-1 text-[12px] font-medium transition
+                className={`relative rounded-md px-2 py-0.5 text-[11px] sm:px-3 sm:py-1 sm:text-[12px] font-medium transition
                   ${effort === e.id
                     ? e.id === "ultra"
                       ? "text-clay-700 dark:text-clay-300"
@@ -299,14 +299,14 @@ export function Composer({
             ))}
           </div>
 
-          {/* Depth status indicator */}
+          {/* Depth status indicator — hidden on mobile to prevent tall composer wrapping */}
           <AnimatePresence mode="wait">
             <motion.span
               key={effort}
               initial={{ opacity: 0, x: -4 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
-              className={`text-[11px] font-medium ${
+              className={`hidden md:inline text-[11px] font-medium ${
                 effort === "ultra"
                   ? "font-semibold text-clay-600 dark:text-clay-400"
                   : "text-sand-400"
@@ -322,7 +322,7 @@ export function Composer({
             </motion.span>
           </AnimatePresence>
 
-          <span className="ml-auto hidden text-[11px] text-sand-400 sm:block">
+          <span className="ml-auto hidden text-[11px] text-sand-400 lg:block">
             Enter to send · Shift+Enter for newline
           </span>
         </div>
@@ -338,7 +338,7 @@ function IconBtn({
     <motion.button
       whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.9 }}
       onClick={onClick} aria-label={label} title={label}
-      className={`mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
+      className={`mb-0.5 flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl transition ${
         active
           ? "bg-red-500/15 text-red-500"
           : "text-sand-500 hover:bg-sand-100 hover:text-sand-800 dark:hover:bg-sand-800 dark:hover:text-sand-200"

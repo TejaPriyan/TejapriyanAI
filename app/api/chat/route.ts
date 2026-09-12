@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     image,
     effort = "fast",
     regenerate = false,
+    history: clientHistory,
   } = await req.json().catch(() => ({}));
 
   /* ---------------------------- auth ----------------------------------- */
@@ -154,18 +155,37 @@ export async function POST(req: NextRequest) {
     });
     history = recent.reverse();
   } catch {
-    // If DB is offline, conversation still proceeds with current turn
-    history = [{ role: "user", content: text, imageData: image ?? null }];
+    // If DB is offline or read-only on serverless, fallback to client-supplied history
+    history = [];
+  }
+
+  // Resilient memory: If DB history is empty or fewer turns than clientHistory,
+  // utilize clientHistory (crucial for serverless environments with read-only SQLite)
+  if (Array.isArray(clientHistory) && clientHistory.length > 0 && clientHistory.length >= history.length) {
+    const sanitized = clientHistory
+      .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .map((m) => ({
+        role: m.role as string,
+        content: m.content as string,
+        imageData: typeof m.imageData === "string" ? m.imageData : null,
+      }));
+    if (sanitized.length > 0) {
+      history = sanitized.slice(-(HISTORY_WINDOW[effort as EffortLevel] ?? 30));
+    }
+  }
+
+  // Ensure current user turn is at the end of history if not already present
+  if (!regenerate && (text || image)) {
+    const last = history[history.length - 1];
+    if (!last || last.role !== "user" || last.content !== text) {
+      history.push({ role: "user", content: text, imageData: image ?? null });
+    }
   }
 
   if (history.length === 0) {
     history = [{ role: "user", content: text, imageData: image ?? null }];
   }
 
-  // Only the latest user image is sent to the model: every older image would
-  // be re-uploaded (and paid for) on each turn and would force the whole
-  // conversation onto vision models. Older turns stay text-only; the UI still
-  // renders full history from the database.
   let keptImage = false;
   const modelMessages: ChatMessage[] = history.map((m, i) => {
     const isLatestUserImage =

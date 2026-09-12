@@ -220,16 +220,16 @@ export function Composer({
           )}
         </AnimatePresence>
 
-        <div className="flex items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2.5">
+        <div className="flex items-end gap-1 p-1 sm:gap-2 sm:p-2.5">
           <input
             ref={fileRef} type="file" accept="image/*" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); e.target.value = ""; }}
           />
           <IconBtn label="Attach image" onClick={() => fileRef.current?.click()}>
-            <IconImage className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            <IconImage className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
           </IconBtn>
           <IconBtn label="Voice input" onClick={toggleVoice} active={listening}>
-            <IconMic className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            <IconMic className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
           </IconBtn>
 
           <textarea
@@ -250,7 +250,7 @@ export function Composer({
                 ? "Drop your image here…"
                 : "Message Teja Priyan AI…"
             }
-            className="scroll-thin max-h-[130px] sm:max-h-[220px] flex-1 resize-none bg-transparent py-1.5 sm:py-2 text-[16px] sm:text-[15px] leading-snug sm:leading-6 outline-none placeholder:text-sand-400"
+            className="scroll-thin max-h-[120px] sm:max-h-[220px] flex-1 resize-none bg-transparent py-1 sm:py-2 text-[15px] sm:text-[15px] leading-snug sm:leading-6 outline-none placeholder:text-sand-400"
           />
 
           <motion.button
@@ -258,10 +258,10 @@ export function Composer({
             onClick={streaming ? onStop : submit}
             disabled={!streaming && !text.trim() && !image}
             aria-label={streaming ? "Stop generating" : "Send message"}
-            className={`mb-0.5 flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl text-white shadow transition disabled:cursor-not-allowed disabled:bg-sand-300 dark:disabled:bg-sand-700
+            className={`mb-0.5 flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-xl text-white shadow transition disabled:cursor-not-allowed disabled:bg-sand-300 dark:disabled:bg-sand-700
               ${isUltra ? "bg-clay-500 hover:bg-clay-600" : "bg-clay-500 hover:bg-clay-600"}`}
           >
-            {streaming ? <IconStop className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <IconSend className="h-4 w-4 sm:h-4.5 sm:w-4.5" />}
+            {streaming ? <IconStop className="h-3 w-3 sm:h-4 sm:w-4" /> : <IconSend className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />}
           </motion.button>
         </div>
 
@@ -362,7 +362,7 @@ function IconBtn({
     <motion.button
       whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.9 }}
       onClick={onClick} aria-label={label} title={label}
-      className={`mb-0.5 flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl transition ${
+      className={`mb-0.5 flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-xl transition ${
         active
           ? "bg-red-500/15 text-red-500"
           : "text-sand-500 hover:bg-sand-100 hover:text-sand-800 dark:hover:bg-sand-800 dark:hover:text-sand-200"

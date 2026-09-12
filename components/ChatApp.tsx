@@ -4,7 +4,9 @@
  * thread and the SSE streaming loop against /api/chat.
  *
  * Upgrades:
- *  - Aurora + grain background (same as landing page)
+ *  - Persistent sidebar chats with local + server multi-layer synchronization
+ *  - Seamless offline / online resilience (chats never disappear)
+ *  - Aurora + grain background
  *  - Animated welcome screen with greeting and format hints
  *  - Keyboard shortcuts: Ctrl+K = new chat, Esc = stop generation
  *  - Dynamic browser tab title (shows active chat name)
@@ -18,15 +20,13 @@ import { Sidebar } from "./Sidebar";
 import { Composer } from "./Composer";
 import { NameModal } from "./NameModal";
 import { useTheme } from "./ThemeProvider";
-import { Workspace } from "./Workspace";
 import { exportChat } from "@/lib/exportChat";
-import type { ChatSummary, EffortLevel, UiMessage, WorkspaceFile } from "@/lib/types";
+import type { ChatSummary, EffortLevel, UiMessage } from "@/lib/types";
 import {
-  IconMenu, IconSun, IconMoon, IconSpark, IconDownload, IconPlus, IconHome, IconFolder,
+  IconMenu, IconSun, IconMoon, IconDownload, IconHome,
 } from "./Icons";
 
 // Markdown parsing and code highlighting are only needed once a reply is visible.
-// Keeping them out of the first chat-page bundle makes the initial transition faster.
 const MessageBubble = dynamic(
   () => import("./MessageBubble").then((module) => module.MessageBubble),
   { ssr: false }
@@ -35,8 +35,9 @@ const MessageBubble = dynamic(
 const LS_USER          = "tp_user";
 const LS_EFFORT        = "tp_effort";
 const LS_PINS          = "tp_pins";
+const LS_CHATS         = "tp_saved_chats";
 const LS_CONVERSATIONS = "tp_user_conversations_v1";
-const MAX_OFFLINE_HOURS = 12;
+const MAX_OFFLINE_HOURS = 24;
 
 export default function ChatApp() {
   const { theme, toggle } = useTheme();
@@ -55,10 +56,6 @@ export default function ChatApp() {
   const [pinnedIds,    setPinnedIds]    = useState<Set<string>>(new Set());
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [editingName,    setEditingName]    = useState(false);
-  const [workspaceOpen,  setWorkspaceOpen]  = useState(false);
-  const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFile[]>([]);
-  const [activeFileId,   setActiveFileId]   = useState<string | null>(null);
-  const [projectName,    setProjectName]    = useState("my-project");
 
   const abortRef     = useRef<AbortController | null>(null);
   const scrollRef    = useRef<HTMLDivElement>(null);
@@ -79,10 +76,6 @@ export default function ChatApp() {
   }, [activeTitle, activeId]);
 
   /* ── bootstrap ── */
-  // Identity lives in a signed httpOnly session cookie; localStorage is only
-  // a cache for the display name. On boot we restore from the session, and if
-  // the cookie is gone but we still have a stored id, we silently re-register
-  // so returning users never lose their chats.
   useEffect(() => {
     let stored: { id: string; name: string } | null = null;
     try {
@@ -95,7 +88,19 @@ export default function ChatApp() {
     } catch {}
     setSidebarOpen(window.innerWidth >= 1024);
 
-    // Restore saved conversations or prune if user was offline for hours
+    // 1. Restore saved chats from local storage immediately so sidebar never starts empty
+    try {
+      const rawChats = localStorage.getItem(LS_CHATS);
+      if (rawChats) {
+        const parsed = JSON.parse(rawChats);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChats(parsed);
+          setChatsLoading(false);
+        }
+      }
+    } catch {}
+
+    // 2. Restore saved conversations cache
     try {
       const rawConv = localStorage.getItem(LS_CONVERSATIONS);
       if (rawConv) {
@@ -103,11 +108,11 @@ export default function ChatApp() {
         const lastActive = Number(parsedConv.lastActive) || 0;
         const hoursOffline = (Date.now() - lastActive) / (1000 * 60 * 60);
         if (hoursOffline > MAX_OFFLINE_HOURS) {
-          // Remove conversation cache after hours of inactivity
           localStorage.removeItem(LS_CONVERSATIONS);
         } else {
+          // If LS_CHATS wasn't populated, use conversations chats
           if (Array.isArray(parsedConv.chats) && parsedConv.chats.length > 0) {
-            setChats(parsedConv.chats);
+            setChats((prev) => (prev.length > 0 ? prev : parsedConv.chats));
             setChatsLoading(false);
           }
           if (parsedConv.messagesByChat && typeof parsedConv.messagesByChat === "object") {
@@ -123,10 +128,9 @@ export default function ChatApp() {
 
     if (stored) {
       setUser(stored);
-      setReady(true); // Instant load for returning visitors — zero spinner wait
+      setReady(true);
     }
 
-    // Unconditional safety fallback: ensure the app NEVER stays stuck on BootScreen
     const safetyTimer = setTimeout(() => {
       setReady(true);
     }, 800);
@@ -144,7 +148,6 @@ export default function ChatApp() {
             return;
           }
         }
-        // No live session — silently re-establish one for a returning visitor.
         if (stored) {
           const r = await fetch("/api/user", {
             method: "POST",
@@ -175,13 +178,12 @@ export default function ChatApp() {
     try { localStorage.setItem(LS_EFFORT, effort); } catch {}
   }, [effort]);
 
-  // Recently opened conversations switch instantly instead of waiting for a second fetch.
   useEffect(() => {
     if (activeId) chatCacheRef.current.set(activeId, messages);
     setExportMenuOpen(false);
   }, [activeId, messages]);
 
-  // Persist conversation cache to localStorage while active; automatically expires after hours offline
+  // Persist conversation cache & chat list to localStorage
   useEffect(() => {
     if (!user) return;
     try {
@@ -200,10 +202,13 @@ export default function ChatApp() {
           messagesByChat: cacheObj,
         })
       );
+      if (chats.length > 0) {
+        localStorage.setItem(LS_CHATS, JSON.stringify(chats));
+      }
     } catch {}
   }, [user, chats, activeId, messages]);
 
-  // Maintain active heartbeat timestamp while user interacts
+  // Heartbeat to keep lastActive fresh
   useEffect(() => {
     const touchActive = () => {
       try {
@@ -248,12 +253,10 @@ export default function ChatApp() {
   /* ── keyboard shortcuts ── */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + K → new chat
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         newChat();
       }
-      // Esc → stop generation
       if (e.key === "Escape" && streaming) {
         abortRef.current?.abort();
         setStreaming(false);
@@ -290,25 +293,45 @@ export default function ChatApp() {
       console.warn("[ChatApp] /api/user error, applying client session fallback:", err);
     }
 
-    // Resilient fallback: ensure user enters chat immediately without sticking
     const fallback = { id: legacyId || `u_${Date.now()}`, name };
     setUser(fallback);
     try { localStorage.setItem(LS_USER, JSON.stringify(fallback)); } catch {}
   }, []);
 
-  /* ── chat list ── */
+  /* ── chat list (Client-First + Server Sync) ── */
   const loadChats = useCallback(
     async (q = "") => {
       if (!user) return;
       try {
         const url = `/api/chats${q ? `?q=${encodeURIComponent(q)}` : ""}`;
-        const res  = await fetch(url);
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          setChats(data.chats ?? []);
+          const serverChats: ChatSummary[] = Array.isArray(data.chats) ? data.chats : [];
+
+          setChats((prevChats) => {
+            if (q) {
+              const queryLower = q.toLowerCase();
+              const filtered = prevChats.filter((c) => c.title.toLowerCase().includes(queryLower));
+              const map = new Map<string, ChatSummary>();
+              serverChats.forEach((c) => map.set(c.id, c));
+              filtered.forEach((c) => map.set(c.id, c));
+              return Array.from(map.values());
+            }
+
+            // Merge server chats with local chats (never wipe local chats!)
+            const map = new Map<string, ChatSummary>();
+            prevChats.forEach((c) => map.set(c.id, c));
+            serverChats.forEach((c) => map.set(c.id, c));
+            const merged = Array.from(map.values()).sort(
+              (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            );
+            try { localStorage.setItem(LS_CHATS, JSON.stringify(merged)); } catch {}
+            return merged;
+          });
         }
       } catch (err) {
-        console.warn("[ChatApp] loadChats failed:", err);
+        console.warn("[ChatApp] loadChats failed, keeping local chats:", err);
       } finally {
         setChatsLoading(false);
       }
@@ -328,20 +351,49 @@ export default function ChatApp() {
   const openChat = useCallback(async (id: string) => {
     if (!user) return;
     const requestId = ++threadRequestRef.current;
-    const cached = chatCacheRef.current.get(id);
     setActiveId(id);
-    setMessages(cached ?? []);
-    setThreadLoading(!cached);
+
+    // 1. Instant load from memory cache
+    const cached = chatCacheRef.current.get(id);
+    if (cached && cached.length > 0) {
+      setMessages(cached);
+      setThreadLoading(false);
+    } else {
+      // 2. Instant load from localStorage
+      let foundLocal = false;
+      try {
+        const raw = localStorage.getItem(LS_CONVERSATIONS);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const localMsgs = parsed.messagesByChat?.[id];
+          if (Array.isArray(localMsgs) && localMsgs.length > 0) {
+            chatCacheRef.current.set(id, localMsgs);
+            setMessages(localMsgs);
+            foundLocal = true;
+          }
+        }
+      } catch {}
+      setThreadLoading(!foundLocal);
+    }
+
     if (window.innerWidth < 1024) setSidebarOpen(false);
+
+    // 3. Reconcile with server thread
     try {
       const res = await fetch(`/api/chats/${id}`);
-      const data = await res.json();
-      if (requestId !== threadRequestRef.current) return;
-      const nextMessages = (data.chat?.messages ?? []).map((m: any) => ({
-        id: m.id, role: m.role, content: m.content, imageData: m.imageData,
-      }));
-      chatCacheRef.current.set(id, nextMessages);
-      setMessages(nextMessages);
+      if (res.ok) {
+        const data = await res.json();
+        if (requestId !== threadRequestRef.current) return;
+        if (Array.isArray(data.chat?.messages) && data.chat.messages.length > 0) {
+          const nextMessages: UiMessage[] = data.chat.messages.map((m: any) => ({
+            id: m.id, role: m.role, content: m.content, imageData: m.imageData,
+          }));
+          chatCacheRef.current.set(id, nextMessages);
+          setMessages(nextMessages);
+        }
+      }
+    } catch (err) {
+      console.warn("[ChatApp] openChat server fetch failed, kept local cache:", err);
     } finally {
       if (requestId === threadRequestRef.current) setThreadLoading(false);
     }
@@ -351,201 +403,48 @@ export default function ChatApp() {
     abortRef.current?.abort();
     setActiveId(null);
     setMessages([]);
-    setWorkspaceFiles([]);
-    setActiveFileId(null);
-    setWorkspaceOpen(false);
     if (window.innerWidth < 1024) setSidebarOpen(false);
   }, []);
 
   const renameChat = useCallback(async (id: string, title: string) => {
     if (!user) return;
-    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, title } : c)));
+    setChats((cs) => {
+      const updated = cs.map((c) => (c.id === id ? { ...c, title } : c));
+      try { localStorage.setItem(LS_CHATS, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     await fetch(`/api/chats/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
-    });
+    }).catch(() => null);
   }, [user]);
 
   const deleteChat = useCallback(
     async (id: string) => {
       if (!user) return;
-      setChats((cs) => cs.filter((c) => c.id !== id));
+      setChats((cs) => {
+        const remaining = cs.filter((c) => c.id !== id);
+        try { localStorage.setItem(LS_CHATS, JSON.stringify(remaining)); } catch {}
+        return remaining;
+      });
       chatCacheRef.current.delete(id);
       pinChat(id, false);
+      try {
+        const raw = localStorage.getItem(LS_CONVERSATIONS);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.messagesByChat) delete parsed.messagesByChat[id];
+          localStorage.setItem(LS_CONVERSATIONS, JSON.stringify(parsed));
+        }
+      } catch {}
       if (id === activeId) { setActiveId(null); setMessages([]); }
-      await fetch(`/api/chats/${id}`, { method: "DELETE" });
+      await fetch(`/api/chats/${id}`, { method: "DELETE" }).catch(() => null);
     },
     [activeId, pinChat, user]
   );
 
-  /* ── workspace & code extraction ── */
-  const extractFilesFromMessages = useCallback((msgs: UiMessage[]) => {
-    const found: WorkspaceFile[] = [];
-    for (const m of msgs) {
-      if (m.role !== "assistant" || !m.content) continue;
-      const regex = /```(\w+)?(?:\s+([^\n]+))?\n([\s\S]*?)```/g;
-      let match;
-      while ((match = regex.exec(m.content)) !== null) {
-        const lang = (match[1] || "txt").toLowerCase();
-        const headerExtra = match[2] || "";
-        const code = match[3] || "";
-
-        let filename = "";
-        if (headerExtra.trim() && headerExtra.includes(".")) {
-          filename = headerExtra.trim().split(/\s+/)[0];
-        } else {
-          const firstLine = code.split("\n")[0] || "";
-          const commentMatch = /(?:<!--|\/\*|\/\/|#)\s*(?:filename:?\s*)?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)\s*(?:-->|\*\/)?/i.exec(firstLine);
-          if (commentMatch && commentMatch[1]) {
-            filename = commentMatch[1].trim();
-          } else {
-            const defaultMap: Record<string, string> = {
-              html: "index.html",
-              css: "style.css",
-              javascript: "script.js",
-              js: "script.js",
-              typescript: "app.ts",
-              ts: "app.ts",
-              python: "main.py",
-              py: "main.py",
-              json: "data.json",
-            };
-            filename = defaultMap[lang] || `file_${found.length + 1}.${lang}`;
-          }
-        }
-
-        const existingIdx = found.findIndex((f) => f.name.toLowerCase() === filename.toLowerCase());
-        const fileObj: WorkspaceFile = {
-          id: existingIdx >= 0 ? found[existingIdx].id : `f_${found.length + 1}_${Date.now()}`,
-          name: filename,
-          language: lang,
-          content: code,
-          updatedAt: Date.now(),
-        };
-
-        if (existingIdx >= 0) {
-          found[existingIdx] = fileObj;
-        } else {
-          found.push(fileObj);
-        }
-      }
-    }
-    return found;
-  }, []);
-
-  // Restore workspace files when switching chat
-  useEffect(() => {
-    const key = activeId ? `tp_workspace_${activeId}` : "tp_workspace_draft";
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (Array.isArray(p.files) && p.files.length > 0) {
-          setWorkspaceFiles(p.files);
-          setActiveFileId(p.activeFileId || p.files[0].id);
-          if (p.projectName) setProjectName(p.projectName);
-          return;
-        }
-      }
-    } catch {}
-    const extracted = extractFilesFromMessages(messages);
-    setWorkspaceFiles(extracted);
-    setActiveFileId(extracted[0]?.id ?? null);
-  }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Persist workspace files to localStorage
-  useEffect(() => {
-    if (workspaceFiles.length === 0) return;
-    const key = activeId ? `tp_workspace_${activeId}` : "tp_workspace_draft";
-    try {
-      localStorage.setItem(
-        key,
-        JSON.stringify({
-          projectName,
-          files: workspaceFiles,
-          activeFileId,
-          updatedAt: Date.now(),
-        })
-      );
-    } catch {}
-  }, [workspaceFiles, activeFileId, projectName, activeId]);
-
-  // Auto-sync code blocks into workspace when streaming completes
-  useEffect(() => {
-    if (!streaming && messages.length > 0 && workspaceFiles.length === 0) {
-      const extracted = extractFilesFromMessages(messages);
-      if (extracted.length > 0) {
-        setWorkspaceFiles(extracted);
-        setActiveFileId(extracted[0].id);
-      }
-    }
-  }, [streaming, messages, workspaceFiles.length, extractFilesFromMessages]);
-
-  // Listen for custom 'open-workspace-file' events from CodeBlock
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const d = (e as CustomEvent).detail as { name: string; language: string; content: string };
-      if (!d) return;
-      setWorkspaceFiles((prev) => {
-        const idx = prev.findIndex((f) => f.name.toLowerCase() === d.name.toLowerCase());
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = { ...next[idx], content: d.content, language: d.language, updatedAt: Date.now() };
-          setActiveFileId(next[idx].id);
-          return next;
-        }
-        const newId = `f_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-        const newFile: WorkspaceFile = {
-          id: newId,
-          name: d.name,
-          language: d.language,
-          content: d.content,
-          updatedAt: Date.now(),
-        };
-        setActiveFileId(newId);
-        return [...prev, newFile];
-      });
-      setWorkspaceOpen(true);
-    };
-    window.addEventListener("open-workspace-file", handler);
-    return () => window.removeEventListener("open-workspace-file", handler);
-  }, []);
-
-  const handleSelectFile = useCallback((fileId: string) => {
-    setActiveFileId(fileId);
-  }, []);
-
-  const handleUpdateFile = useCallback((fileId: string, updates: Partial<WorkspaceFile>) => {
-    setWorkspaceFiles((prev) =>
-      prev.map((f) => (f.id === fileId ? { ...f, ...updates } : f))
-    );
-  }, []);
-
-  const handleCreateFile = useCallback((name: string, content = "") => {
-    const ext = name.split(".").pop() || "txt";
-    const newFile: WorkspaceFile = {
-      id: `f_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      name,
-      language: ext,
-      content,
-      updatedAt: Date.now(),
-    };
-    setWorkspaceFiles((prev) => [...prev, newFile]);
-    setActiveFileId(newFile.id);
-  }, []);
-
-  const handleDeleteFile = useCallback((fileId: string) => {
-    setWorkspaceFiles((prev) => {
-      const next = prev.filter((f) => f.id !== fileId);
-      if (activeFileId === fileId && next.length > 0) {
-        setActiveFileId(next[0].id);
-      }
-      return next;
-    });
-  }, [activeFileId]);
-
-  /* ── autoscroll ── */
+  /* ── scroll lock ── */
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
@@ -577,8 +476,7 @@ export default function ChatApp() {
           body: JSON.stringify({ effort, ...payload }),
           signal: controller.signal,
         });
-        // Session expired (30-day cookie): ask for the name again — the same
-        // account is re-attached, so no history is lost.
+
         if (res.status === 401) {
           setUser(null);
           throw new Error("Session expired — please tell me your name again.");
@@ -608,16 +506,32 @@ export default function ChatApp() {
             if (event === "meta" && data.chatId) {
               createdChatId = data.chatId;
               setActiveId((cur) => cur ?? data.chatId);
+
+              // Add chat to sidebar immediately
+              setChats((prev) => {
+                if (prev.some((c) => c.id === data.chatId)) return prev;
+                const newChat: ChatSummary = {
+                  id: data.chatId,
+                  title: "New chat",
+                  updatedAt: new Date().toISOString(),
+                };
+                const updated = [newChat, ...prev];
+                try { localStorage.setItem(LS_CHATS, JSON.stringify(updated)); } catch {}
+                return updated;
+              });
             } else if (event === "token") {
               setMessages((m) =>
                 m.map((x) => (x.id === assistantId ? { ...x, content: x.content + data.text } : x))
               );
-            } else if (event === "title") {
-              setChats((cs) =>
-                cs.some((c) => c.id === data.chatId)
-                  ? cs.map((c) => (c.id === data.chatId ? { ...c, title: data.title } : c))
-                  : cs
-              );
+            } else if (event === "title" && data.chatId) {
+              setChats((prev) => {
+                const exists = prev.some((c) => c.id === data.chatId);
+                const updated = exists
+                  ? prev.map((c) => (c.id === data.chatId ? { ...c, title: data.title, updatedAt: new Date().toISOString() } : c))
+                  : [{ id: data.chatId, title: data.title, updatedAt: new Date().toISOString() }, ...prev];
+                try { localStorage.setItem(LS_CHATS, JSON.stringify(updated)); } catch {}
+                return updated;
+              });
             } else if (event === "error") {
               setMessages((m) =>
                 m.map((x) =>
@@ -629,6 +543,30 @@ export default function ChatApp() {
             }
           }
         }
+
+        // Cache messages for this chat and persist to localStorage
+        setMessages((currentMsgs) => {
+          const cId = createdChatId || activeId;
+          if (cId && currentMsgs.length > 0) {
+            chatCacheRef.current.set(cId, currentMsgs);
+            try {
+              const rawConv = localStorage.getItem(LS_CONVERSATIONS);
+              const parsed = rawConv ? JSON.parse(rawConv) : {};
+              const msgsByChat = parsed.messagesByChat || {};
+              msgsByChat[cId] = currentMsgs;
+              localStorage.setItem(
+                LS_CONVERSATIONS,
+                JSON.stringify({
+                  ...parsed,
+                  lastActive: Date.now(),
+                  messagesByChat: msgsByChat,
+                })
+              );
+            } catch {}
+          }
+          return currentMsgs;
+        });
+
         if (createdChatId) loadChats(query);
       } catch (err: any) {
         if (err?.name !== "AbortError") {
@@ -649,12 +587,11 @@ export default function ChatApp() {
         abortRef.current = null;
       }
     },
-    [user, effort, loadChats, query]
+    [user, effort, loadChats, query, activeId]
   );
 
   const send = useCallback(
     (text: string, image: string | null) => {
-      // Collect continuous prior turns for uninterrupted multi-turn conversational memory
       const priorTurns = messages
         .filter((m) => !m.error && m.content)
         .slice(-20)
@@ -728,15 +665,13 @@ export default function ChatApp() {
         onEditName={() => setEditingName(true)}
       />
 
-      <main className="chat-surface relative flex min-w-0 flex-1 flex-col">
-        {/* ── Aurora background (same as landing) ── */}
-        <div className="aurora pointer-events-none absolute inset-0 z-0" />
-        <div className="grain pointer-events-none absolute inset-0 z-0" />
+      <main className="relative flex flex-1 flex-col overflow-hidden bg-sand-50/50 dark:bg-sand-950">
+        <div className="aurora pointer-events-none absolute inset-0 opacity-40 dark:opacity-60" />
 
-        {/* ── Header ── */}
-        <header className="relative z-10 flex items-center gap-2 border-b border-sand-200/80 bg-sand-50/70 px-3 py-2.5 backdrop-blur-xl dark:border-sand-800/80 dark:bg-sand-950/70 sm:px-4">
+        {/* ── Top Header ── */}
+        <header className="relative z-10 flex h-14 items-center gap-3 border-b border-sand-200/70 px-4 backdrop-blur-xl dark:border-sand-800/60">
           <motion.button
-            whileTap={{ scale: 0.9 }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => setSidebarOpen((v) => !v)}
             aria-label="Toggle sidebar"
             title="Toggle sidebar"
@@ -750,7 +685,6 @@ export default function ChatApp() {
             {user && <p className="truncate text-[11px] text-sand-400">Hi, {user.name} 👋</p>}
           </div>
 
-          {/* Keyboard shortcut hint */}
           <span className="hidden rounded-md border border-sand-200 bg-sand-100/80 px-2 py-0.5 font-mono text-[10px] text-sand-400 dark:border-sand-700 dark:bg-sand-800/80 sm:inline">
             ⌘K new
           </span>
@@ -763,39 +697,6 @@ export default function ChatApp() {
           >
             <IconHome className="h-5 w-5" />
           </Link>
-
-          {/* Workspace Toggle */}
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={() => {
-              if (workspaceFiles.length === 0) {
-                const detected = extractFilesFromMessages(messages);
-                if (detected.length > 0) {
-                  setWorkspaceFiles(detected);
-                  setActiveFileId(detected[0].id);
-                } else {
-                  handleCreateFile("index.html", "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>New Project</title>\n  <style>body { font-family: sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; }</style>\n</head>\n<body>\n  <h1>Hello from Teja Priyan AI</h1>\n  <p>Your interactive project workspace is ready.</p>\n</body>\n</html>");
-                }
-              }
-              setWorkspaceOpen((v) => !v);
-            }}
-            title={workspaceOpen ? "Close Workspace" : "Open Workspace"}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
-              workspaceOpen
-                ? "bg-clay-600 text-white shadow-sm"
-                : workspaceFiles.length > 0
-                ? "bg-clay-500/15 text-clay-600 dark:text-clay-300 hover:bg-clay-500/25"
-                : "text-sand-500 hover:bg-sand-100/80 dark:hover:bg-sand-800"
-            }`}
-          >
-            <IconFolder className="h-4 w-4 text-clay-400" />
-            <span className="hidden sm:inline">Workspace</span>
-            {workspaceFiles.length > 0 && (
-              <span className="rounded-full bg-clay-500/20 px-1.5 py-0.2 text-[10px] font-mono font-semibold">
-                {workspaceFiles.length}
-              </span>
-            )}
-          </motion.button>
 
           <div ref={exportMenuRef} className="relative">
             <motion.button
@@ -896,58 +797,6 @@ export default function ChatApp() {
           />
         </div>
       </main>
-
-      {/* ── Desktop Workspace Side Panel (Chat | Workspace) ── */}
-      <AnimatePresence>
-        {workspaceOpen && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 560, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 340, damping: 34 }}
-            className="hidden lg:flex h-full shrink-0 flex-col overflow-hidden z-20 xl:w-[620px]"
-          >
-            <Workspace
-              open={workspaceOpen}
-              onClose={() => setWorkspaceOpen(false)}
-              projectName={projectName}
-              onProjectNameChange={setProjectName}
-              files={workspaceFiles}
-              activeFileId={activeFileId}
-              onSelectFile={handleSelectFile}
-              onUpdateFile={handleUpdateFile}
-              onCreateFile={handleCreateFile}
-              onDeleteFile={handleDeleteFile}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Mobile / Tablet Fullscreen Workspace Drawer ── */}
-      <AnimatePresence>
-        {workspaceOpen && (
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="lg:hidden fixed inset-0 z-50 flex flex-col bg-sand-950"
-          >
-            <Workspace
-              open={workspaceOpen}
-              onClose={() => setWorkspaceOpen(false)}
-              projectName={projectName}
-              onProjectNameChange={setProjectName}
-              files={workspaceFiles}
-              activeFileId={activeFileId}
-              onSelectFile={handleSelectFile}
-              onUpdateFile={handleUpdateFile}
-              onCreateFile={handleCreateFile}
-              onDeleteFile={handleDeleteFile}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -1000,7 +849,6 @@ function EmptyState({ name }: { name: string }) {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col items-center justify-center py-10 text-center sm:py-20"
     >
-      {/* Animated Glowing TP Favicon Emblem */}
       <motion.div
         animate={{ y: [0, -6, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -1043,10 +891,9 @@ function EmptyState({ name }: { name: string }) {
         transition={{ delay: 0.16 }}
         className="mt-2.5 max-w-md text-[14px] sm:text-[15px] text-sand-600 dark:text-sand-300 font-normal leading-relaxed"
       >
-        Your intelligent workspace for deep thinking, analysis, and creative problem solving with continuous memory.
+        Your personal AI companion for deep thinking, analysis, and creative problem solving with continuous memory.
       </motion.p>
 
-      {/* Keyboard shortcut hint */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

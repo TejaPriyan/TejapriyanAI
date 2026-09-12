@@ -147,24 +147,7 @@ export function MessageBubble({
             <p className="whitespace-pre-wrap text-[16px] leading-7">{message.content}</p>
           ) : message.content ? (
             <div className={streaming && isLast ? "caret" : ""}>
-              {codeBlocks >= 2 && !streaming && (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-clay-500/30 bg-clay-500/10 px-3 py-2 text-xs text-clay-700 dark:text-clay-300 shadow-sm">
-                  <div className="flex items-center gap-2 font-medium">
-                    <IconFolder className="h-4 w-4 text-clay-500 dark:text-clay-400" />
-                    <span>Multi-File Project Workspace Available</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent("open-workspace-file", {
-                        detail: { name: "index.html", language: "html", content: "" }
-                      }));
-                    }}
-                    className="rounded-lg bg-clay-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-clay-500 transition"
-                  >
-                    Open Workspace →
-                  </button>
-                </div>
-              )}
+
               <Markdown content={message.content} />
             </div>
           ) : (

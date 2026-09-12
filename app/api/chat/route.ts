@@ -106,19 +106,30 @@ export async function POST(req: NextRequest) {
   /* ---------------------- resolve / create the chat --------------------- */
   let activeChatId = chatId || "";
   try {
+    await prisma.user.upsert({
+      where: { id: userId },
+      create: { id: userId, name: "Friend" },
+      update: {},
+    }).catch(() => null);
+
     let chat = chatId
-      ? await prisma.chat.findUnique({ where: { id: chatId } })
+      ? await prisma.chat.findUnique({ where: { id: chatId } }).catch(() => null)
       : null;
     // Ownership check: never let a user write into someone else's thread.
     if (chat && chat.userId !== userId) chat = null;
     if (!chat) {
-      chat = await prisma.chat.create({ data: { userId } }).catch(() => null);
+      chat = await prisma.chat.create({
+        data: {
+          id: chatId || undefined,
+          userId,
+        },
+      }).catch(() => null);
     }
     if (chat) activeChatId = chat.id;
   } catch (err) {
     console.warn("[/api/chat] DB chat resolve/create failed, using ephemeral id:", err);
   }
-  if (!activeChatId) activeChatId = `c_${Date.now()}`;
+  if (!activeChatId) activeChatId = chatId || `c_${Date.now()}`;
 
   /* ------------------------- persist user turn -------------------------- */
   try {

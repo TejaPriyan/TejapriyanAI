@@ -494,22 +494,6 @@ function CodeBlock({ children }: { children: any }) {
 
         {/* Action controls */}
         <div className="flex items-center gap-1">
-          {/* Open in Workspace */}
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={() => {
-              window.dispatchEvent(
-                new CustomEvent("open-workspace-file", {
-                  detail: { name: filename, language: lang, content: code },
-                })
-              );
-            }}
-            title="Open in Workspace"
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-clay-400 hover:bg-clay-950/40 hover:text-clay-300 transition"
-          >
-            <IconFolder className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Workspace</span>
-          </motion.button>
           {tab === "output" && (
             <>
               {/* Restart / Re-run */}
@@ -816,3 +800,4 @@ function MarkdownImpl({ content }: { content: string }) {
 }
 
 export const Markdown = memo(MarkdownImpl);
+

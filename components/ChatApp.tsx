@@ -18,10 +18,11 @@ import { Sidebar } from "./Sidebar";
 import { Composer } from "./Composer";
 import { NameModal } from "./NameModal";
 import { useTheme } from "./ThemeProvider";
+import { Workspace } from "./Workspace";
 import { exportChat } from "@/lib/exportChat";
-import type { ChatSummary, EffortLevel, UiMessage } from "@/lib/types";
+import type { ChatSummary, EffortLevel, UiMessage, WorkspaceFile } from "@/lib/types";
 import {
-  IconMenu, IconSun, IconMoon, IconSpark, IconDownload, IconPlus, IconHome,
+  IconMenu, IconSun, IconMoon, IconSpark, IconDownload, IconPlus, IconHome, IconFolder,
 } from "./Icons";
 
 // Markdown parsing and code highlighting are only needed once a reply is visible.
@@ -54,6 +55,10 @@ export default function ChatApp() {
   const [pinnedIds,    setPinnedIds]    = useState<Set<string>>(new Set());
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [editingName,    setEditingName]    = useState(false);
+  const [workspaceOpen,  setWorkspaceOpen]  = useState(false);
+  const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFile[]>([]);
+  const [activeFileId,   setActiveFileId]   = useState<string | null>(null);
+  const [projectName,    setProjectName]    = useState("my-project");
 
   const abortRef     = useRef<AbortController | null>(null);
   const scrollRef    = useRef<HTMLDivElement>(null);
@@ -346,6 +351,9 @@ export default function ChatApp() {
     abortRef.current?.abort();
     setActiveId(null);
     setMessages([]);
+    setWorkspaceFiles([]);
+    setActiveFileId(null);
+    setWorkspaceOpen(false);
     if (window.innerWidth < 1024) setSidebarOpen(false);
   }, []);
 
@@ -370,6 +378,172 @@ export default function ChatApp() {
     },
     [activeId, pinChat, user]
   );
+
+  /* ── workspace & code extraction ── */
+  const extractFilesFromMessages = useCallback((msgs: UiMessage[]) => {
+    const found: WorkspaceFile[] = [];
+    for (const m of msgs) {
+      if (m.role !== "assistant" || !m.content) continue;
+      const regex = /```(\w+)?(?:\s+([^\n]+))?\n([\s\S]*?)```/g;
+      let match;
+      while ((match = regex.exec(m.content)) !== null) {
+        const lang = (match[1] || "txt").toLowerCase();
+        const headerExtra = match[2] || "";
+        const code = match[3] || "";
+
+        let filename = "";
+        if (headerExtra.trim() && headerExtra.includes(".")) {
+          filename = headerExtra.trim().split(/\s+/)[0];
+        } else {
+          const firstLine = code.split("\n")[0] || "";
+          const commentMatch = /(?:<!--|\/\*|\/\/|#)\s*(?:filename:?\s*)?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)\s*(?:-->|\*\/)?/i.exec(firstLine);
+          if (commentMatch && commentMatch[1]) {
+            filename = commentMatch[1].trim();
+          } else {
+            const defaultMap: Record<string, string> = {
+              html: "index.html",
+              css: "style.css",
+              javascript: "script.js",
+              js: "script.js",
+              typescript: "app.ts",
+              ts: "app.ts",
+              python: "main.py",
+              py: "main.py",
+              json: "data.json",
+            };
+            filename = defaultMap[lang] || `file_${found.length + 1}.${lang}`;
+          }
+        }
+
+        const existingIdx = found.findIndex((f) => f.name.toLowerCase() === filename.toLowerCase());
+        const fileObj: WorkspaceFile = {
+          id: existingIdx >= 0 ? found[existingIdx].id : `f_${found.length + 1}_${Date.now()}`,
+          name: filename,
+          language: lang,
+          content: code,
+          updatedAt: Date.now(),
+        };
+
+        if (existingIdx >= 0) {
+          found[existingIdx] = fileObj;
+        } else {
+          found.push(fileObj);
+        }
+      }
+    }
+    return found;
+  }, []);
+
+  // Restore workspace files when switching chat
+  useEffect(() => {
+    const key = activeId ? `tp_workspace_${activeId}` : "tp_workspace_draft";
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (Array.isArray(p.files) && p.files.length > 0) {
+          setWorkspaceFiles(p.files);
+          setActiveFileId(p.activeFileId || p.files[0].id);
+          if (p.projectName) setProjectName(p.projectName);
+          return;
+        }
+      }
+    } catch {}
+    const extracted = extractFilesFromMessages(messages);
+    setWorkspaceFiles(extracted);
+    setActiveFileId(extracted[0]?.id ?? null);
+  }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist workspace files to localStorage
+  useEffect(() => {
+    if (workspaceFiles.length === 0) return;
+    const key = activeId ? `tp_workspace_${activeId}` : "tp_workspace_draft";
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          projectName,
+          files: workspaceFiles,
+          activeFileId,
+          updatedAt: Date.now(),
+        })
+      );
+    } catch {}
+  }, [workspaceFiles, activeFileId, projectName, activeId]);
+
+  // Auto-sync code blocks into workspace when streaming completes
+  useEffect(() => {
+    if (!streaming && messages.length > 0 && workspaceFiles.length === 0) {
+      const extracted = extractFilesFromMessages(messages);
+      if (extracted.length > 0) {
+        setWorkspaceFiles(extracted);
+        setActiveFileId(extracted[0].id);
+      }
+    }
+  }, [streaming, messages, workspaceFiles.length, extractFilesFromMessages]);
+
+  // Listen for custom 'open-workspace-file' events from CodeBlock
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { name: string; language: string; content: string };
+      if (!d) return;
+      setWorkspaceFiles((prev) => {
+        const idx = prev.findIndex((f) => f.name.toLowerCase() === d.name.toLowerCase());
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], content: d.content, language: d.language, updatedAt: Date.now() };
+          setActiveFileId(next[idx].id);
+          return next;
+        }
+        const newId = `f_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const newFile: WorkspaceFile = {
+          id: newId,
+          name: d.name,
+          language: d.language,
+          content: d.content,
+          updatedAt: Date.now(),
+        };
+        setActiveFileId(newId);
+        return [...prev, newFile];
+      });
+      setWorkspaceOpen(true);
+    };
+    window.addEventListener("open-workspace-file", handler);
+    return () => window.removeEventListener("open-workspace-file", handler);
+  }, []);
+
+  const handleSelectFile = useCallback((fileId: string) => {
+    setActiveFileId(fileId);
+  }, []);
+
+  const handleUpdateFile = useCallback((fileId: string, updates: Partial<WorkspaceFile>) => {
+    setWorkspaceFiles((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, ...updates } : f))
+    );
+  }, []);
+
+  const handleCreateFile = useCallback((name: string, content = "") => {
+    const ext = name.split(".").pop() || "txt";
+    const newFile: WorkspaceFile = {
+      id: `f_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      language: ext,
+      content,
+      updatedAt: Date.now(),
+    };
+    setWorkspaceFiles((prev) => [...prev, newFile]);
+    setActiveFileId(newFile.id);
+  }, []);
+
+  const handleDeleteFile = useCallback((fileId: string) => {
+    setWorkspaceFiles((prev) => {
+      const next = prev.filter((f) => f.id !== fileId);
+      if (activeFileId === fileId && next.length > 0) {
+        setActiveFileId(next[0].id);
+      }
+      return next;
+    });
+  }, [activeFileId]);
 
   /* ── autoscroll ── */
   const onScroll = () => {
@@ -590,6 +764,39 @@ export default function ChatApp() {
             <IconHome className="h-5 w-5" />
           </Link>
 
+          {/* Workspace Toggle */}
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => {
+              if (workspaceFiles.length === 0) {
+                const detected = extractFilesFromMessages(messages);
+                if (detected.length > 0) {
+                  setWorkspaceFiles(detected);
+                  setActiveFileId(detected[0].id);
+                } else {
+                  handleCreateFile("index.html", "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>New Project</title>\n  <style>body { font-family: sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; }</style>\n</head>\n<body>\n  <h1>Hello from Teja Priyan AI</h1>\n  <p>Your interactive project workspace is ready.</p>\n</body>\n</html>");
+                }
+              }
+              setWorkspaceOpen((v) => !v);
+            }}
+            title={workspaceOpen ? "Close Workspace" : "Open Workspace"}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+              workspaceOpen
+                ? "bg-clay-600 text-white shadow-sm"
+                : workspaceFiles.length > 0
+                ? "bg-clay-500/15 text-clay-600 dark:text-clay-300 hover:bg-clay-500/25"
+                : "text-sand-500 hover:bg-sand-100/80 dark:hover:bg-sand-800"
+            }`}
+          >
+            <IconFolder className="h-4 w-4 text-clay-400" />
+            <span className="hidden sm:inline">Workspace</span>
+            {workspaceFiles.length > 0 && (
+              <span className="rounded-full bg-clay-500/20 px-1.5 py-0.2 text-[10px] font-mono font-semibold">
+                {workspaceFiles.length}
+              </span>
+            )}
+          </motion.button>
+
           <div ref={exportMenuRef} className="relative">
             <motion.button
               whileTap={{ scale: 0.9 }}
@@ -689,6 +896,58 @@ export default function ChatApp() {
           />
         </div>
       </main>
+
+      {/* ── Desktop Workspace Side Panel (Chat | Workspace) ── */}
+      <AnimatePresence>
+        {workspaceOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 560, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 340, damping: 34 }}
+            className="hidden lg:flex h-full shrink-0 flex-col overflow-hidden z-20 xl:w-[620px]"
+          >
+            <Workspace
+              open={workspaceOpen}
+              onClose={() => setWorkspaceOpen(false)}
+              projectName={projectName}
+              onProjectNameChange={setProjectName}
+              files={workspaceFiles}
+              activeFileId={activeFileId}
+              onSelectFile={handleSelectFile}
+              onUpdateFile={handleUpdateFile}
+              onCreateFile={handleCreateFile}
+              onDeleteFile={handleDeleteFile}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile / Tablet Fullscreen Workspace Drawer ── */}
+      <AnimatePresence>
+        {workspaceOpen && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="lg:hidden fixed inset-0 z-50 flex flex-col bg-sand-950"
+          >
+            <Workspace
+              open={workspaceOpen}
+              onClose={() => setWorkspaceOpen(false)}
+              projectName={projectName}
+              onProjectNameChange={setProjectName}
+              files={workspaceFiles}
+              activeFileId={activeFileId}
+              onSelectFile={handleSelectFile}
+              onUpdateFile={handleUpdateFile}
+              onCreateFile={handleCreateFile}
+              onDeleteFile={handleDeleteFile}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

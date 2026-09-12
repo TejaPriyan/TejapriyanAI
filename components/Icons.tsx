@@ -46,3 +46,6 @@ export const IconMinimize = s(<><path d="M4 14h6v6m10-10h-6V4m0 6l7-7M10 14l-7 7
 export const IconExternal = s(<><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" /></>);
 export const IconColumns = s(<><rect x="4" y="4" width="7" height="16" rx="1" /><rect x="13" y="4" width="7" height="16" rx="1" /></>);
 export const IconExpand = s(<><polyline points="7 15 12 20 17 15" /><polyline points="7 9 12 4 17 9" /></>);
+export const IconFolder = s(<><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></>);
+export const IconFile = s(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></>);
+export const IconSave = s(<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></>);

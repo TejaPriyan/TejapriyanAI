@@ -36,6 +36,7 @@ import {
   IconExternal,
   IconColumns,
   IconExpand,
+  IconFolder,
 } from "./Icons";
 
 /** Recursively flatten a React node tree to plain text (for copying and running). */
@@ -70,6 +71,16 @@ function getFilename(lang: string, code: string): string {
   if (l === "c" || l === "cpp") return "main.cpp";
   if (l === "java") return "Main.java";
   return `code.${l || "txt"}`;
+}
+
+/** Extract a friendly filename from code comments or default to language standard */
+function extractFilename(code: string, lang: string): string {
+  const firstLines = code.split("\n").slice(0, 3).join("\n");
+  const match = /(?:<!--|\/\*|\/\/|#)\s*(?:filename:?\s*)?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)\s*(?:-->|\*\/)?/i.exec(firstLines);
+  if (match && match[1] && !match[1].includes(" ")) {
+    return match[1].trim();
+  }
+  return getFilename(lang, code);
 }
 
 /** Format a JS value cleanly for the console */
@@ -286,6 +297,7 @@ function CodeBlock({ children }: { children: any }) {
       /language-([\w-]+)/.exec(children?.props?.className ?? "")?.[1] ?? "code"
     );
   }, [children]);
+  const filename = useMemo(() => extractFilename(code, lang), [code, lang]);
 
   const l = lang.toLowerCase();
   const isHtml = /^(html|htm|svg|xml)$/i.test(l) || /<(!doctype|html|head|body|svg|canvas)/i.test(code);
@@ -381,7 +393,7 @@ function CodeBlock({ children }: { children: any }) {
   // Download code
   const download = useCallback(() => {
     try {
-      const filename = getFilename(lang, code);
+      // Using extracted filename
       const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -396,7 +408,7 @@ function CodeBlock({ children }: { children: any }) {
     } catch (err) {
       console.error("Download failed:", err);
     }
-  }, [code, lang]);
+  }, [code, filename]);
 
   // Pop out to a new native browser window/tab ("fullscreen is not enough")
   const openPopout = useCallback(() => {
@@ -447,13 +459,14 @@ function CodeBlock({ children }: { children: any }) {
       {/* ── Top Header Bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sand-800/80 bg-[#161b22] px-3 py-1.5 text-xs">
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-sand-400">
+          <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-sand-200">
             <span className="h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-            {lang}
+            <span className="text-white font-medium">{filename}</span>
+            <span className="text-[10px] text-sand-400 font-mono uppercase">({lang})</span>
           </span>
 
-          {/* Toggle Code vs Run/Output */}
-          <div className="ml-2 flex rounded-md bg-sand-900/90 p-0.5 border border-sand-800">
+          {/* Toggle Code vs Preview */}
+          <div className="ml-1 sm:ml-2 flex rounded-md bg-sand-900/90 p-0.5 border border-sand-800">
             <button
               type="button"
               onClick={() => setTab("code")}
@@ -474,13 +487,29 @@ function CodeBlock({ children }: { children: any }) {
                   : "text-cyan-400 hover:text-cyan-300"
               }`}
             >
-              <IconPlay className="h-3 w-3" /> {isVisualPreview ? "Live Preview" : "Run / Output"}
+              <IconPlay className="h-3 w-3" /> {isVisualPreview ? "Preview" : "Output"}
             </button>
           </div>
         </div>
 
         {/* Action controls */}
         <div className="flex items-center gap-1">
+          {/* Open in Workspace */}
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("open-workspace-file", {
+                  detail: { name: filename, language: lang, content: code },
+                })
+              );
+            }}
+            title="Open in Workspace"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-clay-400 hover:bg-clay-950/40 hover:text-clay-300 transition"
+          >
+            <IconFolder className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Workspace</span>
+          </motion.button>
           {tab === "output" && (
             <>
               {/* Restart / Re-run */}

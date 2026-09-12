@@ -16,3 +16,17 @@ export type ChatSummary = {
   updatedAt: string;
   pinned?: boolean;
 };
+export type WorkspaceFile = {
+  id: string;
+  name: string;
+  language: string;
+  content: string;
+  updatedAt?: number;
+};
+
+export type WorkspaceProject = {
+  id: string;
+  name: string;
+  files: WorkspaceFile[];
+  activeFileId: string | null;
+};

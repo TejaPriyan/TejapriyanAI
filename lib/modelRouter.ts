@@ -49,65 +49,79 @@ export type ModelRoute = {
 /* -------------------------------------------------------------------------- */
 
 const DEFAULT_ROUTES: ModelRoute[] = [
-  // --- NVIDIA NIM: Top reasoning, vision & coding models (Tried First) -------
-  { rank: 1, provider: "nvidia", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: true },
-  { rank: 2, provider: "nvidia", model: "qwen/qwen2.5-coder-32b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
-  { rank: 3, provider: "nvidia", model: "meta/llama-3.3-70b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
+  // =========================================================================
+  // 1. FAST MODE (Rank 1-5): Ultra-low latency, instant direct generation
+  // =========================================================================
+  { rank: 1, provider: "openrouter", model: "nex-agi/nex-n2.5-mini:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
+  { rank: 2, provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
+  { rank: 3, provider: "openrouter", model: "liquid/lfm-2.5-2.6b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
+  { rank: 4, provider: "openrouter", model: "inclusionai/ling-3.0-flash-vl:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: true },
+  { rank: 5, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: true },
+
+  // =========================================================================
+  // 2. THINK MODE (Rank 10-15): Balanced reasoning, structured explanations
+  // =========================================================================
+  { rank: 10, provider: "openrouter", model: "nex-agi/nex-n2.5-pro:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: false },
+  { rank: 11, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
+  { rank: 12, provider: "openrouter", model: "google/gemma-4-26b-a4b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
+  { rank: 13, provider: "openrouter", model: "google/gemma-4-31b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
+  { rank: 14, provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think"], vision: true },
+
+  // =========================================================================
+  // 3. MAX MODE (Rank 20-25): Deep technical synthesis, complex coding
+  // =========================================================================
+  { rank: 20, provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: false },
+  { rank: 21, provider: "openrouter", model: "cohere/north-mini-code:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: false },
+  { rank: 22, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: true },
+  { rank: 23, provider: "openrouter", model: "google/gemma-4-31b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: true },
+
+  // =========================================================================
+  // 4. ULTRA MODE (Rank 30-35): Maximum cognitive depth, exhaustive proofs & code
+  // =========================================================================
+  { rank: 30, provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: false },
+  { rank: 31, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: true },
+  { rank: 32, provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["ultra"], vision: false },
+
+  // =========================================================================
+  // 5. SECONDARY PROVIDERS & FALLBACKS (Rank 40+)
+  // =========================================================================
+  // --- NVIDIA NIM: Top reasoning, vision & coding models ---------------------
+  { rank: 40, provider: "nvidia", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", keyEnv: "NVIDIA_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: true },
+  { rank: 41, provider: "nvidia", model: "qwen/qwen2.5-coder-32b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["think", "max", "ultra"], vision: false },
+  { rank: 42, provider: "nvidia", model: "meta/llama-3.3-70b-instruct", keyEnv: "NVIDIA_API_KEY", effort: ["think", "max", "ultra"], vision: false },
 
   // --- Bytez Open Agent API: High-speed model network -----------------------
-  { rank: 4, provider: "bytez", model: "Qwen/Qwen2.5-Coder-32B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
-  { rank: 5, provider: "bytez", model: "meta-llama/Llama-3.3-70B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["fast", "think", "max", "ultra"], vision: false },
-
-  // --- Ollama: 100% free, NO API KEY, runs locally, no quota ever. ---------
-  // Tried whenever the local server is reachable.
-  { rank: 6, provider: "ollama", model: "qwen3:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
-  { rank: 7, provider: "ollama", model: "gemma3:4b", keyEnv: "NONE", effort: ["fast"], vision: true },
-  { rank: 8, provider: "ollama", model: "gemma3:12b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
-  { rank: 9, provider: "ollama", model: "qwen3:14b", keyEnv: "NONE", effort: ["think", "max"], vision: false },
-  { rank: 10, provider: "ollama", model: "qwen2.5vl:7b", keyEnv: "NONE", effort: ["fast", "think", "max"], vision: true },
-  { rank: 11, provider: "ollama", model: "llava:7b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
-  { rank: 12, provider: "ollama", model: "gemma3:27b", keyEnv: "NONE", effort: ["max"], vision: true },
-  { rank: 13, provider: "ollama", model: "qwen3:30b", keyEnv: "NONE", effort: ["max"], vision: false },
-  { rank: 14, provider: "ollama", model: "llama3.1:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
+  { rank: 43, provider: "bytez", model: "Qwen/Qwen2.5-Coder-32B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["think", "max", "ultra"], vision: false },
+  { rank: 44, provider: "bytez", model: "meta-llama/Llama-3.3-70B-Instruct", keyEnv: "BYTEZ_API_KEY", effort: ["think", "max", "ultra"], vision: false },
 
   // --- Groq: free, no card, extremely fast. ---------------------------------
-  { rank: 15, provider: "groq", model: "openai/gpt-oss-20b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
-  { rank: 16, provider: "groq", model: "openai/gpt-oss-120b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
-  { rank: 17, provider: "groq", model: "qwen/qwen3.6-27b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
-  { rank: 18, provider: "groq", model: "qwen/qwen3.8-27b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
-  { rank: 19, provider: "groq", model: "groq/compound-mini", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
+  { rank: 45, provider: "groq", model: "openai/gpt-oss-20b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
+  { rank: 46, provider: "groq", model: "openai/gpt-oss-120b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
+  { rank: 47, provider: "groq", model: "qwen/qwen3.6-27b", keyEnv: "GROQ_API_KEY", effort: ["fast", "think"], vision: false },
+  { rank: 48, provider: "groq", model: "qwen/qwen3.8-27b", keyEnv: "GROQ_API_KEY", effort: ["think", "max"], vision: false },
+  { rank: 49, provider: "groq", model: "groq/compound-mini", keyEnv: "GROQ_API_KEY", effort: ["fast"], vision: false },
 
   // --- Google Gemini (AI Studio free tier): native vision across the family -
-  { rank: 20, provider: "google", model: "gemini-2.0-flash", keyEnv: "GOOGLE_API_KEY", effort: ["fast", "think"], vision: true },
-  { rank: 21, provider: "google", model: "gemini-2.5-flash", keyEnv: "GOOGLE_API_KEY", effort: ["think", "max"], vision: true },
-  { rank: 22, provider: "google", model: "gemini-2.5-pro", keyEnv: "GOOGLE_API_KEY", effort: ["max"], vision: true },
+  { rank: 50, provider: "google", model: "gemini-2.0-flash", keyEnv: "GOOGLE_API_KEY", effort: ["fast", "think"], vision: true },
+  { rank: 51, provider: "google", model: "gemini-2.5-flash", keyEnv: "GOOGLE_API_KEY", effort: ["think", "max"], vision: true },
+  { rank: 52, provider: "google", model: "gemini-2.5-pro", keyEnv: "GOOGLE_API_KEY", effort: ["max", "ultra"], vision: true },
 
-  // --- OpenRouter: one key, many :free models -------------------------------
-  // ":free" models are shared-capacity and sometimes return 429 "temporarily
-  // rate-limited upstream" — the router just falls through to the next one.
-  // Every ID below was verified live (models catalogue + a smoke completion)
-  // in September 2026. Retired/restricted models (minimax-m3:free 404,
-  // thinkingmachines/inkling:free 403 "agentic harnesses only") were removed.
-  // A route that hard-fails anyway is put in a 10-minute cooldown by the
-  // circuit breaker in streamChatCompletion, so it costs zero requests.
-  // nemotron-3-nano-omni is the primary cloud vision route (accepts image_url
-  // parts; also audio/video-capable upstream).
-  { rank: 30, provider: "openrouter", model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast", "think"], vision: true },
-  { rank: 31, provider: "openrouter", model: "google/gemma-4-31b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast", "think"], vision: true },
-  { rank: 32, provider: "openrouter", model: "google/gemma-4-26b-a4b-it:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast", "think"], vision: true },
-  { rank: 33, provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think", "max"], vision: false },
-  { rank: 34, provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["max"], vision: false },
-  { rank: 35, provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast", "think"], vision: false },
-  { rank: 36, provider: "openrouter", model: "liquid/lfm-2.5-2.6b:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast"], vision: false },
-  { rank: 37, provider: "openrouter", model: "cohere/north-mini-code:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast", "think"], vision: false },
-  { rank: 38, provider: "openrouter", model: "poolside/laguna-s-2.1:free", keyEnv: "OPENROUTER_API_KEY", effort: ["think", "max"], vision: false },
-  { rank: 39, provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", keyEnv: "OPENROUTER_API_KEY", effort: ["fast", "think"], vision: true },
+  // --- Ollama: 100% free, NO API KEY, runs locally, no quota ever. ---------
+  { rank: 60, provider: "ollama", model: "qwen3:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
+  { rank: 61, provider: "ollama", model: "gemma3:4b", keyEnv: "NONE", effort: ["fast"], vision: true },
+  { rank: 62, provider: "ollama", model: "gemma3:12b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
+  { rank: 63, provider: "ollama", model: "qwen3:14b", keyEnv: "NONE", effort: ["think", "max"], vision: false },
+  { rank: 64, provider: "ollama", model: "qwen2.5vl:7b", keyEnv: "NONE", effort: ["fast", "think", "max"], vision: true },
+  { rank: 65, provider: "ollama", model: "llava:7b", keyEnv: "NONE", effort: ["fast", "think"], vision: true },
+  { rank: 66, provider: "ollama", model: "gemma3:27b", keyEnv: "NONE", effort: ["max", "ultra"], vision: true },
+  { rank: 67, provider: "ollama", model: "qwen3:30b", keyEnv: "NONE", effort: ["max", "ultra"], vision: false },
+  { rank: 68, provider: "ollama", model: "llama3.1:8b", keyEnv: "NONE", effort: ["fast", "think"], vision: false },
 
   // --- Cloudflare Workers AI: separate free daily allowance -----------------
-  { rank: 40, provider: "cloudflare", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", keyEnv: "CLOUDFLARE_API_TOKEN", effort: ["fast", "think", "max"], vision: false },
+  { rank: 70, provider: "cloudflare", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", keyEnv: "CLOUDFLARE_API_TOKEN", effort: ["fast", "think", "max"], vision: false },
 
   // --- Hugging Face Inference Providers: thin free allowance, last resort ---
-  { rank: 50, provider: "huggingface", model: "meta-llama/Llama-3.1-8B-Instruct", keyEnv: "HF_TOKEN", effort: ["fast", "think", "max"], vision: false },
+  { rank: 80, provider: "huggingface", model: "meta-llama/Llama-3.1-8B-Instruct", keyEnv: "HF_TOKEN", effort: ["fast", "think", "max"], vision: false }
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -184,33 +198,33 @@ const EFFORT_PROFILES: Record<
 > = {
   fast: {
     maxTokens: 1024,
-    temperature: 0.4,
-    timeoutMs: 30_000,
+    temperature: 0.3,
+    timeoutMs: 25_000,
     guidance:
-      "Answer with high speed, directness and precision. Deliver clean answers, tight bullet lists, and focused code snippets with zero fluff or unnecessary preamble.",
+      "ACTIVE COGNITIVE MODE: FAST.\n- Absolute Priority: Ultra-low latency, immediate answers, zero unnecessary thinking.\n- Style: Crisp, direct, 1 to 3 short paragraphs. No meta-reasoning, no chain-of-thought, no long preambles, and no fluff.\n- Simple questions get immediate short answers. Never make answers unnecessarily long.\n- When code is requested, provide only the focused, working snippet.",
   },
   think: {
     maxTokens: 3200,
     temperature: 0.6,
     timeoutMs: 60_000,
     guidance:
-      "Reason through problems systematically before answering. Provide structured analysis with clear logical steps, well-explained rationale, and helpful real-world context.",
+      "ACTIVE COGNITIVE MODE: THINK.\n- Absolute Priority: Balanced reasoning, clear structured explanations, accurate answers, moderate response time.\n- Style: Clear Markdown headings, logical step-by-step points, helpful real-world context, well-explained rationale without bloat.\n- Numbered steps for how-tos, tables for comparisons.",
   },
   max: {
     maxTokens: 8192,
     temperature: 0.7,
     timeoutMs: 120_000,
     guidance:
-      "Engage deep technical synthesis. Analyze edge cases, architecture trade-offs, security implications, and produce comprehensive, production-grade solutions.",
+      "ACTIVE COGNITIVE MODE: MAX.\n- Absolute Priority: Deep reasoning, complex coding, difficult questions, detailed analysis, and production-grade architectures.\n- Style: Thorough, rigorous, analyze edge cases, performance trade-offs, and security implications.\n- Complete, production-grade code with error handling, type definitions, and multi-file structures.",
   },
   ultra: {
     maxTokens: 16384,
-    temperature: 0.85,
-    timeoutMs: 240_000,
+    temperature: 0.75,
+    timeoutMs: 25_000,
     guidance:
-      "Operate at maximum cognitive depth. Provide exhaustive reasoning, formal proofs, full end-to-end codebases, and leave no angle unaddressed. Never summarize or truncate code unless explicitly told.",
+      "ACTIVE COGNITIVE MODE: ULTRA.\n- Absolute Priority: Maximum cognitive depth, mathematical proofs, complex systems architecture, exhaustive analytical rigor.\n- Style: Highest-quality reasoning, mathematical precision, deep algorithmic derivations.\n- Provide complete end-to-end architectures and codebases with zero omission or premature truncation.",
   },
-};
+};;
 
 const PERSONA = `You are Teja Priyan AI, an advanced, highly intelligent, versatile, and professional AI companion.
 
@@ -476,12 +490,20 @@ const streamOpenRouter = openAICompatible(
     "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
     "X-Title": "Teja Priyan AI",
   },
-  // On Fast, reasoning models are told to think briefly — otherwise
-  // nemotron-class models can burn the entire 1024-token budget on hidden
-  // reasoning and return a truncated answer. Harmlessly ignored by
-  // non-reasoning models.
-  (body, _route, effort) =>
-    effort === "fast" ? { ...body, reasoning: { effort: "low" } } : body
+  (body, _route, effort) => {
+    const tweaked: Record<string, unknown> = { ...body };
+    // Tailored reasoning parameters per effort tier for OpenRouter
+    if (effort === "fast") {
+      tweaked.reasoning = { effort: "low" };
+    } else if (effort === "think") {
+      tweaked.reasoning = { effort: "medium" };
+    } else if (effort === "max") {
+      tweaked.reasoning = { effort: "high" };
+    } else if (effort === "ultra") {
+      tweaked.reasoning = { effort: "high" };
+    }
+    return tweaked;
+  }
 );
 
 const streamHuggingFace = openAICompatible("https://router.huggingface.co/v1");
@@ -723,17 +745,23 @@ export function selectRoutes(
     return usable && (needsVision ? r.vision : true);
   });
 
-  const preferred = available.filter((r) => r.effort.includes(effort) || needsVision || effort === "ultra");
+  // 1. Primary: exact match on the requested cognitive effort tier (and vision if required)
+  const preferred = available.filter((r) => {
+    const effortMatches = r.effort.includes(effort);
+    return needsVision ? (r.vision && effortMatches) : effortMatches;
+  });
 
-  // Never return an empty list just because the requested tier isn't available.
-  // If you only pulled small local models, "Max" still answers on what you have
-  // (the effort profile — token budget, temperature, prompt — still applies).
-  if (preferred.length > 0) {
-    // Append the remaining routes as extra fallbacks after the preferred ones.
-    const rest = available.filter((r) => !preferred.includes(r));
-    return [...preferred, ...rest];
-  }
-  return available;
+  // 2. Vision fallbacks if an image was attached but no exact effort match had vision
+  const visionFallbacks = needsVision
+    ? available.filter((r) => r.vision && !preferred.includes(r))
+    : [];
+
+  // 3. General fallbacks: other usable routes
+  const fallbacks = available.filter(
+    (r) => !preferred.includes(r) && !visionFallbacks.includes(r)
+  );
+
+  return [...preferred, ...visionFallbacks, ...fallbacks];
 }
 
 /**

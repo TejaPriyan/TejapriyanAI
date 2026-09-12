@@ -12,11 +12,11 @@ import {
   IconZap,
 } from "./Icons";
 
-const EFFORTS: { id: EffortLevel; label: string; hint: string }[] = [
-  { id: "fast",  label: "Fast",  hint: "Ultra-fast direct answers with zero latency" },
-  { id: "think", label: "Think", hint: "Step-by-step logic and structured reasoning" },
-  { id: "max",   label: "Max",   hint: "Deep architectural synthesis & comprehensive solutions" },
-  { id: "ultra", label: "Ultra", hint: "Maximum cognitive depth · Full proofs & complete code" },
+const EFFORTS: { id: EffortLevel; label: string; hint: string; badge: string; desc: string }[] = [
+  { id: "fast",  label: "Fast",  hint: "Ultra-fast direct answers with minimal latency", badge: "⚡ Fast", desc: "Ultra-fast response · Low latency direct answers" },
+  { id: "think", label: "Think", hint: "Step-by-step logic and structured reasoning", badge: "🧠 Think", desc: "Structured step-by-step reasoning · Balanced depth" },
+  { id: "max",   label: "Max",   hint: "Deep architectural synthesis & comprehensive solutions", badge: "⚡ Max", desc: "Deep technical synthesis & edge cases · High reasoning" },
+  { id: "ultra", label: "Ultra", hint: "Maximum cognitive depth · Full proofs & complete code", badge: "🔥 Ultra", desc: "Maximum cognitive depth · Full proofs & complete code" },
 ];
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -269,56 +269,80 @@ export function Composer({
         <div className="flex items-center gap-1.5 sm:gap-2 border-t border-sand-100 px-2 py-1 sm:px-3 sm:py-2 dark:border-sand-800">
           <span className="text-[10px] sm:text-[11px] font-medium text-sand-400">Depth</span>
           <div className="relative flex rounded-lg bg-sand-100 p-0.5 dark:bg-sand-800">
-            {EFFORTS.map((e) => (
-              <button
-                key={e.id}
-                onClick={() => onEffort(e.id)}
-                title={e.hint}
-                className={`relative rounded-md px-2 py-0.5 text-[11px] sm:px-3 sm:py-1 sm:text-[12px] font-medium transition
-                  ${effort === e.id
-                    ? e.id === "ultra"
-                      ? "text-clay-700 dark:text-clay-300"
-                      : "text-sand-900 dark:text-white"
-                    : "text-sand-500 hover:text-sand-700 dark:hover:text-sand-300"}`}
-              >
-                {effort === e.id && (
-                  <motion.span
-                    layoutId="effort-pill"
-                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                    className={`absolute inset-0 rounded-md shadow-sm
-                      ${e.id === "ultra"
-                        ? "bg-clay-100 dark:bg-clay-950/50"
-                        : "bg-white dark:bg-sand-700"}`}
-                  />
-                )}
-                <span className="relative flex items-center gap-1">
-                  {e.id === "ultra" && <IconZap className="h-3 w-3" />}
-                  {e.label}
-                </span>
-              </button>
-            ))}
+            {EFFORTS.map((e) => {
+              const active = effort === e.id;
+              return (
+                <button
+                  key={e.id}
+                  onClick={() => onEffort(e.id)}
+                  title={e.hint}
+                  className={`relative rounded-md px-2 py-0.5 text-[11px] sm:px-3 sm:py-1 sm:text-[12px] font-medium transition ${
+                    active
+                      ? e.id === "ultra"
+                        ? "text-clay-700 dark:text-clay-300 font-semibold"
+                        : e.id === "max"
+                        ? "text-indigo-700 dark:text-indigo-300 font-semibold"
+                        : e.id === "think"
+                        ? "text-sky-700 dark:text-sky-300 font-semibold"
+                        : "text-emerald-700 dark:text-emerald-300 font-semibold"
+                      : "text-sand-500 hover:text-sand-700 dark:hover:text-sand-300"
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="effort-pill"
+                      transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                      className={`absolute inset-0 rounded-md shadow-sm ${
+                        e.id === "ultra"
+                          ? "bg-clay-100 dark:bg-clay-950/60"
+                          : e.id === "max"
+                          ? "bg-indigo-100 dark:bg-indigo-950/60"
+                          : e.id === "think"
+                          ? "bg-sky-100 dark:bg-sky-950/60"
+                          : "bg-emerald-100 dark:bg-emerald-950/60"
+                      }`}
+                    />
+                  )}
+                  <span className="relative flex items-center gap-1">
+                    {e.id === "ultra" ? (
+                      <IconZap className="h-3 w-3 text-clay-600 dark:text-clay-400" />
+                    ) : e.id === "max" ? (
+                      <span className="text-[10px]">⚡</span>
+                    ) : e.id === "think" ? (
+                      <span className="text-[10px]">🧠</span>
+                    ) : (
+                      <span className="text-[10px]">⚡</span>
+                    )}
+                    {e.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Depth status indicator — hidden on mobile to prevent tall composer wrapping */}
+          {/* Depth status indicator — responsive for mobile & desktop */}
           <AnimatePresence mode="wait">
             <motion.span
               key={effort}
               initial={{ opacity: 0, x: -4 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
-              className={`hidden md:inline text-[11px] font-medium ${
+              className={`text-[10px] sm:text-[11px] font-medium truncate ${
                 effort === "ultra"
                   ? "font-semibold text-clay-600 dark:text-clay-400"
-                  : "text-sand-400"
+                  : effort === "max"
+                  ? "font-semibold text-indigo-600 dark:text-indigo-400"
+                  : effort === "think"
+                  ? "text-sky-600 dark:text-sky-400"
+                  : "text-emerald-600 dark:text-emerald-400"
               }`}
             >
-              {effort === "ultra"
-                ? "Maximum cognitive depth · Full reasoning & proofs"
-                : effort === "max"
-                ? "Deep technical synthesis & edge cases"
-                : effort === "think"
-                ? "Structured step-by-step reasoning"
-                : "Ultra-fast response"}
+              <span className="hidden md:inline">
+                {EFFORTS.find((e) => e.id === effort)?.desc}
+              </span>
+              <span className="inline md:hidden">
+                {EFFORTS.find((e) => e.id === effort)?.badge}
+              </span>
             </motion.span>
           </AnimatePresence>
 

@@ -754,10 +754,22 @@ export default function Landing() {
           <p className="text-xs text-sand-500 dark:text-sand-400">
             Teja Priyan AI can make mistakes. Verify important information.
           </p>
-          <Link href="/chat"
-            className="text-sm font-medium text-sand-600 underline-offset-4 transition hover:text-sand-950 hover:underline dark:text-sand-300 dark:hover:text-white">
-            Open chat →
-          </Link>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://www.buymeacoffee.com/TejaPriyan"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-mono transition-all duration-200 shadow-sm"
+              title="Support TejaPriyan"
+            >
+              <span>🍕</span>
+              <span>Buy me a pizza</span>
+            </a>
+            <Link href="/chat"
+              className="text-sm font-medium text-sand-600 underline-offset-4 transition hover:text-sand-950 hover:underline dark:text-sand-300 dark:hover:text-white">
+              Open chat →
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

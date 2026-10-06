@@ -301,8 +301,18 @@ export function Sidebar(p: Props) {
         </div>
       </div>
 
-      <div className="border-t border-sand-200 px-4 py-3 text-[11px] text-sand-400 dark:border-sand-800">
-        Teja Priyan AI can make mistakes. Verify important information.
+      <div className="border-t border-sand-200 px-4 py-3 text-[11px] text-sand-400 dark:border-sand-800 flex flex-col gap-2">
+        <a
+          href="https://www.buymeacoffee.com/TejaPriyan"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-mono transition-all duration-200 text-center font-medium"
+          title="Support TejaPriyan"
+        >
+          <span>🍕</span>
+          <span>Buy me a pizza</span>
+        </a>
+        <span>Teja Priyan AI can make mistakes. Verify important information.</span>
       </div>
     </div>
   );

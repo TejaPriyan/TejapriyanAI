@@ -104,32 +104,20 @@ export async function POST(req: NextRequest) {
   }
 
   /* ---------------------- resolve / create the chat --------------------- */
-  let activeChatId = chatId || "";
-  try {
-    await prisma.user.upsert({
-      where: { id: userId },
-      create: { id: userId, name: "Friend" },
-      update: {},
-    }).catch(() => null);
-
-    let chat = chatId
-      ? await prisma.chat.findUnique({ where: { id: chatId } }).catch(() => null)
-      : null;
-    // Ownership check: never let a user write into someone else's thread.
-    if (chat && chat.userId !== userId) chat = null;
-    if (!chat) {
-      chat = await prisma.chat.create({
-        data: {
-          id: chatId || undefined,
-          userId,
-        },
-      }).catch(() => null);
-    }
-    if (chat) activeChatId = chat.id;
-  } catch (err) {
-    console.warn("[/api/chat] DB chat resolve/create failed, using ephemeral id:", err);
+  if (chatId !== undefined && (typeof chatId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(chatId))) {
+    return new Response("Invalid chat id", { status: 400 });
   }
-  if (!activeChatId) activeChatId = chatId || `c_${Date.now()}`;
+  let activeChatId: string;
+  try {
+    await prisma.user.upsert({ where: { id: userId }, create: { id: userId, name: "Friend" }, update: {} });
+    let chat = chatId ? await prisma.chat.findUnique({ where: { id: chatId } }) : null;
+    if (chat && chat.userId !== userId) return new Response("Chat not found", { status: 404 });
+    if (!chat) chat = await prisma.chat.create({ data: { id: chatId || undefined, userId } });
+    activeChatId = chat.id;
+  } catch {
+    // Never continue with an unverified client ID after an ownership/DB failure.
+    return new Response("Conversation storage unavailable. Please retry.", { status: 503 });
+  }
 
   /* ------------------------- persist user turn -------------------------- */
   try {

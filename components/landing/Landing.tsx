@@ -68,14 +68,14 @@ const PRINCIPLES = [
   {
     n: "04",
     title: "Your data stays yours",
-    body: "Your conversations, uploaded files, and prompt history remain strictly within your private database. Private, encrypted, and owned entirely by you.",
+    body: "Conversations may be cached in your browser and stored on the application server. Prompts and images are sent to the configured AI provider to generate responses.",
   },
 ];
 
 const COMPARISON = [
   { f: "Instant streaming responses",       a: true, b: "Often batched" },
   { f: "Autonomous cognitive failover",     a: true, b: "Single point of failure" },
-  { f: "Private local database storage",    a: true, b: "Cloud vendor locked" },
+  { f: "Browser cache + server storage",    a: true, b: "Cloud vendor locked" },
   { f: "Native image & vision analysis",    a: true, b: "Usually paid tier" },
   { f: "No passwords or subscriptions",     a: true, b: "Credit card required" },
   { f: "Conversation history & search",     a: true, b: "Varies" },
@@ -309,7 +309,7 @@ export default function Landing() {
               { v: <Counter value={99.9} decimals={1} suffix="%" />, l: "System Availability" },
               { v: <Counter value={4} />,                             l: "Reasoning Tiers" },
               { v: "< 0.4s",                                         l: "First-Token Latency" },
-              { v: "100%",                                           l: "Private & Account-Free" },
+              { v: "No password",                                    l: "Session-based access" },
             ].map((s, i) => (
               <RevealItem key={i}>
                 <div className="display text-[2.6rem] font-semibold tabular-nums text-sand-950 sm:text-[3.1rem] dark:text-white">
@@ -613,8 +613,8 @@ export default function Landing() {
                   icon: "🎯",
                 },
                 {
-                  title: "Total privacy by design",
-                  body: "Your prompts, uploaded images, and chat threads stay strictly in your local database. Zero telemetry, zero external tracking.",
+                  title: "Understand your data flow",
+                  body: "Cloud modes send prompts and images to external AI providers. Local inference requires a locally hosted backend and local model configuration. Review the active deployment before sharing sensitive data.",
                   icon: "🔒",
                 },
                 {

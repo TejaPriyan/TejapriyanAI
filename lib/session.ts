@@ -18,7 +18,10 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 let warnedAboutSecret = false;
 function secret(): string {
   const s = process.env.AUTH_SECRET;
-  if (s) return s;
+  if (s && s.length >= 32) return s;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET must contain at least 32 characters in production");
+  }
   if (!warnedAboutSecret) {
     console.warn(
       "[session] AUTH_SECRET is not set — using an insecure dev fallback. " +
@@ -51,7 +54,7 @@ export function verifySessionToken(token: string | null | undefined): string | n
   const a = Buffer.from(sig, "utf8");
   const b = Buffer.from(expected, "utf8");
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  if (Number(expires) < Math.floor(Date.now() / 1000)) return null;
+  if (!/^\d+$/.test(expires) || !Number.isSafeInteger(Number(expires)) || Number(expires) <= Math.floor(Date.now() / 1000)) return null;
   return userId;
 }
 

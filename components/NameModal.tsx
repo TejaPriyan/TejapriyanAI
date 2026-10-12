@@ -109,7 +109,7 @@ export function NameModal({
             </motion.button>
 
             <p className="mt-4 text-center text-[11px] text-sand-400">
-              Your name and conversations stay private on your device.
+              Your browser caches conversations; server storage and configured AI providers may also process them.
             </p>
           </motion.div>
         </motion.div>

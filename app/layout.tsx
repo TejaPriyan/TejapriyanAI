@@ -234,7 +234,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             name: "Is Teja Priyan AI free?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "Yes, Teja Priyan AI is completely free to use with zero subscriptions, no credit card requirements, and private local database session storage.",
+              text: "Yes, Teja Priyan AI is completely free to use with zero subscriptions, no credit card requirements, and browser caching and server-side conversation storage.",
             },
           },
         ],
